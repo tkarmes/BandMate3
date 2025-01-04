@@ -14,6 +14,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 @Component
 public class JdbcUserDao implements UserDao {
@@ -87,57 +88,57 @@ public class JdbcUserDao implements UserDao {
             throw new DaoException("Data integrity violation", e);
         }
         return newUser;
+    }
 
-        @Override
-        public void deleteUserById(Long userId, Long actingUserId) throws UserNotFoundException, UserDeletionException {
-            // Retrieve the user to be deleted
-            User userToDelete = getUserById(userId);
-            if (userToDelete == null) {
-                throw new UserNotFoundException("User with ID " + userId + " not found");
-            }
-
-            // Check if the acting user has permission to delete this user
-            if (!canDeleteUser(userToDelete, actingUserId)) {
-                throw new UserDeletionException("User does not have permission to delete this profile");
-            }
-
-            String sql = "DELETE FROM users WHERE user_id = ?";
-            try {
-                int rowsAffected = jdbcTemplate.update(sql, userId);
-                if (rowsAffected == 0) {
-                    throw new UserNotFoundException("User not found or already deleted");
-                }
-            } catch (CannotGetJdbcConnectionException e) {
-                throw new DaoException("Unable to connect to server or database", e);
-            } catch (DataIntegrityViolationException e) {
-                throw new UserDeletionException("Cannot delete user due to database integrity constraints", e);
-            }
+    @Override
+    public void deleteUserById(Long userId, Long actingUserId) throws UserNotFoundException, UserDeletionException {
+        // Retrieve the user to be deleted
+        User userToDelete = getUserById(userId);
+        if (userToDelete == null) {
+            throw new UserNotFoundException("User with ID " + userId + " not found");
         }
 
-        @Override
-        public void deleteUserByUsername(String username, Long actingUserId) throws UserNotFoundException, UserDeletionException {
-            // Retrieve the user to be deleted
-            User userToDelete = getUserByUsername(username);
-            if (userToDelete == null) {
-                throw new UserNotFoundException("User with username " + username + " not found");
+        // Check if the acting user has permission to delete this user
+        if (!canDeleteUser(userToDelete, actingUserId)) {
+            throw new UserDeletionException("User does not have permission to delete this profile");
+        }
+
+        String sql = "DELETE FROM users WHERE user_id = ?";
+        try {
+            int rowsAffected = jdbcTemplate.update(sql, userId);
+            if (rowsAffected == 0) {
+                throw new UserNotFoundException("User not found or already deleted");
             }
+        } catch (CannotGetJdbcConnectionException e) {
+            throw new DaoException("Unable to connect to server or database", e);
+        } catch (DataIntegrityViolationException e) {
+            throw new UserDeletionException("Cannot delete user due to database integrity constraints", e);
+        }
+    }
 
-            // Use the already implemented deleteUserById method
-            deleteUserById(userToDelete.getUserId(), actingUserId);
+    @Override
+    public void deleteUserByUsername(String username, Long actingUserId) throws UserNotFoundException, UserDeletionException {
+        // Retrieve the user to be deleted
+        User userToDelete = getUserByUsername(username);
+        if (userToDelete == null) {
+            throw new UserNotFoundException("User with username " + username + " not found");
         }
 
-        // Helper method to check if the acting user can delete the target user
-        private boolean canDeleteUser(User userToDelete, Long actingUserId) {
-            // User can delete their own account or an admin can delete any account
-            return actingUserId.equals(userToDelete.getUserId()) || isAdmin(actingUserId);
-        }
+        // Use the already implemented deleteUserById method
+        deleteUserById(userToDelete.getUserId(), actingUserId);
+    }
 
-        // Method to check if the user is an admin
-        private boolean isAdmin(Long userId) {
-            String sql = "SELECT COUNT(*) FROM users WHERE user_id = ? AND user_type = 'Admin'";
-            SqlRowSet results = jdbcTemplate.queryForRowSet(sql, userId);
-            return results.next() && results.getInt(1) > 0;
-        }
+    // Helper method to check if the acting user can delete the target user
+    private boolean canDeleteUser(User userToDelete, Long actingUserId) {
+        // User can delete their own account or an admin can delete any account
+        return actingUserId.equals(userToDelete.getUserId()) || isAdmin(actingUserId);
+    }
+
+    // Method to check if the user is an admin
+    private boolean isAdmin(Long userId) {
+        String sql = "SELECT COUNT(*) FROM users WHERE user_id = ? AND user_type = 'Admin'";
+        SqlRowSet results = jdbcTemplate.queryForRowSet(sql, userId);
+        return results.next() && results.getInt(1) > 0;
     }
 
     private User mapRowToUser(SqlRowSet rs) {

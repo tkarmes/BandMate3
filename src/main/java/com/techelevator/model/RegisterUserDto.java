@@ -1,6 +1,8 @@
 package com.techelevator.model;
 
 import javax.validation.constraints.NotEmpty;
+import javax.validation.constraints.Pattern;
+
 /*
     The acronym DTO is being used for "data transfer object". It means that this type of class is specifically
     created to transfer data between the client and the server. For example, CredentialsDto represents the data a client must
@@ -9,13 +11,17 @@ import javax.validation.constraints.NotEmpty;
  */
 public class RegisterUserDto {
 
-    @NotEmpty
+    @NotEmpty(message = "Username cannot be empty.")
     private String username;
-    @NotEmpty
+
+    @NotEmpty(message = "Password cannot be empty.")
     private String password;
-    @NotEmpty
+
+    @NotEmpty(message = "Confirm Password cannot be empty.")
     private String confirmPassword;
+
     @NotEmpty(message = "Please select a role for this user.")
+    @Pattern(regexp = "ROLE_(ADMIN|USER)", message = "Role must be either ROLE_ADMIN or ROLE_USER.")
     private String role;
 
     public String getUsername() {

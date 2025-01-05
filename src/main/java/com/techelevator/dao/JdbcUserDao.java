@@ -5,6 +5,7 @@ import com.techelevator.exception.UserNotFoundException;
 import com.techelevator.exception.UserDeletionException;
 import com.techelevator.model.RegisterUserDto;
 import com.techelevator.model.User;
+import com.techelevator.model.Authority;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.CannotGetJdbcConnectionException;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -14,7 +15,6 @@ import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 
 @Component
 public class JdbcUserDao implements UserDao {
@@ -28,7 +28,7 @@ public class JdbcUserDao implements UserDao {
     @Override
     public User getUserById(Long userId) {
         User user = null;
-        String sql = "SELECT user_id, username, email, password_hash, user_type, created_at, role FROM users WHERE user_id = ?";
+        String sql = "SELECT user_id, username, email, password_hash, user_type, created_at FROM users WHERE user_id = ?";
         try {
             SqlRowSet results = jdbcTemplate.queryForRowSet(sql, userId);
             if (results.next()) {
@@ -43,7 +43,7 @@ public class JdbcUserDao implements UserDao {
     @Override
     public List<User> getUsers() {
         List<User> users = new ArrayList<>();
-        String sql = "SELECT user_id, username, email, password_hash, user_type, created_at, role FROM users";
+        String sql = "SELECT user_id, username, email, password_hash, user_type, created_at FROM users";
         try {
             SqlRowSet results = jdbcTemplate.queryForRowSet(sql);
             while (results.next()) {
@@ -60,7 +60,7 @@ public class JdbcUserDao implements UserDao {
     public User getUserByUsername(String username) {
         if (username == null) throw new IllegalArgumentException("Username cannot be null");
         User user = null;
-        String sql = "SELECT user_id, username, email, password_hash, user_type, created_at, role FROM users WHERE username = LOWER(TRIM(?));";
+        String sql = "SELECT user_id, username, email, password_hash, user_type, created_at FROM users WHERE username = LOWER(TRIM(?));";
         try {
             SqlRowSet rowSet = jdbcTemplate.queryForRowSet(sql, username);
             if (rowSet.next()) {
@@ -75,12 +75,17 @@ public class JdbcUserDao implements UserDao {
     @Override
     public User createUser(RegisterUserDto user) {
         User newUser = null;
-        String insertUserSql = "INSERT INTO users (username, password_hash, user_type, role) values (LOWER(TRIM(?)), ?, ?, ?) RETURNING user_id";
+        String insertUserSql = "INSERT INTO users (username, password_hash, user_type) values (LOWER(TRIM(?)), ?, ?) RETURNING user_id";
         String password_hash = new BCryptPasswordEncoder().encode(user.getPassword());
-        String ssRole = user.getRole().toUpperCase().startsWith("ROLE_") ? user.getRole().toUpperCase() : "ROLE_" + user.getRole().toUpperCase();
         User.UserType userType = user.getRole().equalsIgnoreCase("Musician") ? User.UserType.Musician : User.UserType.VenueOwner;
         try {
-            Long newUserId = jdbcTemplate.queryForObject(insertUserSql, Long.class, user.getUsername(), password_hash, userType.toString(), ssRole);
+            Long newUserId = jdbcTemplate.queryForObject(insertUserSql, Long.class, user.getUsername(), password_hash, userType.toString());
+
+            // Insert into user_authorities table
+            String insertAuthoritySql = "INSERT INTO user_authorities (user_id, authority_name) VALUES (?, ?)";
+            String role = user.getRole().toUpperCase().startsWith("ROLE_") ? user.getRole().toUpperCase() : "ROLE_" + user.getRole().toUpperCase();
+            jdbcTemplate.update(insertAuthoritySql, newUserId, role);
+
             newUser = getUserById(newUserId);
         } catch (CannotGetJdbcConnectionException e) {
             throw new DaoException("Unable to connect to server or database", e);
@@ -136,7 +141,7 @@ public class JdbcUserDao implements UserDao {
 
     // Method to check if the user is an admin
     private boolean isAdmin(Long userId) {
-        String sql = "SELECT COUNT(*) FROM users WHERE user_id = ? AND user_type = 'Admin'";
+        String sql = "SELECT COUNT(*) FROM user_authorities WHERE user_id = ? AND authority_name = 'ROLE_ADMIN'";
         SqlRowSet results = jdbcTemplate.queryForRowSet(sql, userId);
         return results.next() && results.getInt(1) > 0;
     }
@@ -149,7 +154,14 @@ public class JdbcUserDao implements UserDao {
         user.setPasswordHash(rs.getString("password_hash"));
         user.setUserType(User.UserType.valueOf(rs.getString("user_type")));
         user.setCreatedAt(rs.getTimestamp("created_at"));
-        user.setAuthorities(rs.getString("role")); // Assuming 'role' is how you store authorities in string format
+
+        // Fetch authorities from the user_authorities table
+        String sqlAuthorities = "SELECT authority_name FROM user_authorities WHERE user_id = ?";
+        List<String> roles = jdbcTemplate.queryForList(sqlAuthorities, String.class, user.getUserId());
+        for (String role : roles) {
+            user.getAuthorities().add(new Authority(role));
+        }
+
         return user;
     }
 }

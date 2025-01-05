@@ -1,6 +1,5 @@
 package com.techelevator.model;
 
-
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import javax.persistence.*;
 import java.util.Date;
@@ -36,6 +35,8 @@ public class User {
    private Date createdAt;
 
    @ElementCollection
+   @CollectionTable(name = "user_authorities", joinColumns = @JoinColumn(name = "user_id"))
+   @Column(name = "authority_name")
    private Set<Authority> authorities = new HashSet<>();
 
    // Default constructor
@@ -48,6 +49,7 @@ public class User {
       this.passwordHash = passwordHash;
       this.userType = userType;
       this.createdAt = new Date(); // Set current time when user is created
+      this.authorities.add(new Authority("ROLE_USER")); // Default role
    }
 
    // Getters and Setters
@@ -108,10 +110,14 @@ public class User {
    }
 
    public void setAuthorities(String authorities) {
+      this.authorities.clear(); // Clear existing authorities before adding new ones
       String[] roles = authorities.split(",");
       for (String role : roles) {
-         String authority = role.contains("ROLE_") ? role : "ROLE_" + role;
-         this.authorities.add(new Authority(authority));
+         try {
+            this.authorities.add(new Authority(role.trim()));
+         } catch (IllegalArgumentException e) {
+            System.err.println("Invalid authority: " + role + ". Skipping.");
+         }
       }
    }
 
@@ -126,7 +132,7 @@ public class User {
               Objects.equals(passwordHash, user.passwordHash) &&
               userType == user.userType &&
               Objects.equals(createdAt, user.createdAt) &&
-              Objects.equals(authorities, user.authorities);
+              Objects.equals(this.authorities, user.authorities);
    }
 
    @Override

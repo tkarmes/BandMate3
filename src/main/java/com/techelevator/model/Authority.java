@@ -2,20 +2,23 @@ package com.techelevator.model;
 
 import java.util.Objects;
 
-public class Authority {
+public final class Authority {
 
-   private String name;
+   private final String name;
+
+   public Authority(String name) {
+      if (name == null || name.trim().isEmpty()) {
+         throw new IllegalArgumentException("Authority name cannot be null or empty");
+      }
+      String normalizedName = name.toUpperCase();
+      if (!normalizedName.equals("ROLE_ADMIN") && !normalizedName.equals("ROLE_USER")) {
+         throw new IllegalArgumentException("Authority must be either 'ROLE_ADMIN' or 'ROLE_USER'");
+      }
+      this.name = normalizedName;
+   }
 
    public String getName() {
       return name;
-   }
-
-   public void setName(String name) {
-      this.name = name;
-   }
-
-   public Authority(String name) {
-      this.name = name;
    }
 
    @Override
@@ -34,7 +37,7 @@ public class Authority {
    @Override
    public String toString() {
       return "Authority{" +
-         "name=" + name +
-         '}';
+              "name='" + name + '\'' +
+              '}';
    }
 }

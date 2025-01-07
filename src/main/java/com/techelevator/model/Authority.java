@@ -1,33 +1,44 @@
 package com.techelevator.model;
 
+import javax.persistence.Column;
+import javax.persistence.Embeddable;
 import java.util.Objects;
 
-
-
+@Embeddable
 public class Authority {
 
+   @Column(name = "authority_name")
    private String name;
 
-//   public Authority(String name) {
-//      if (name == null || name.trim().isEmpty()) {
-//         throw new IllegalArgumentException("Authority name cannot be null or empty");
-//      }
-//      String normalizedName = name.toUpperCase();
-//      if (!normalizedName.equals("ROLE_ADMIN") && !normalizedName.equals("ROLE_USER")) {
-//         throw new IllegalArgumentException("Authority must be either 'ROLE_ADMIN' or 'ROLE_USER'");
-//      }
-//      this.name = normalizedName;
-//   }
-
-
+   /**
+    * Constructs an Authority object with the given name, ensuring it's valid.
+    * @param name The name of the authority, must be either 'ROLE_ADMIN' or 'ROLE_USER'.
+    * @throws IllegalArgumentException if the name is invalid.
+    */
    public Authority(String name) {
-      this.name = name;
+      if (name == null || name.trim().isEmpty()) {
+         throw new IllegalArgumentException("Authority name cannot be null or empty");
+      }
+      String normalizedName = name.toUpperCase();
+      if (!normalizedName.equals("ROLE_ADMIN") && !normalizedName.equals("ROLE_USER")) {
+         throw new IllegalArgumentException("Authority must be either 'ROLE_ADMIN' or 'ROLE_USER'");
+      }
+      this.name = normalizedName;
    }
 
+   /**
+    * Gets the name of this authority.
+    * @return The authority name.
+    */
    public String getName() {
       return name;
    }
 
+   /**
+    * Sets the name of this authority. Note: This setter is included for compatibility
+    * but should not be used to change an authority's name after initialization for consistency.
+    * @param name The new name for the authority.
+    */
    public void setName(String name) {
       this.name = name;
    }

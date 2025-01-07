@@ -5,6 +5,7 @@ import javax.validation.Valid;
 import com.techelevator.exception.DaoException;
 import com.techelevator.exception.UserNotFoundException;
 import com.techelevator.exception.UserDeletionException;
+import com.techelevator.exception.UserCreationException;
 import com.techelevator.model.*;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -59,15 +60,20 @@ public class AuthenticationController {
 
     @ResponseStatus(HttpStatus.CREATED)
     @RequestMapping(path = "/register", method = RequestMethod.POST)
-    public void register(@Valid @RequestBody RegisterUserDto newUser) {
+    public ResponseEntity<User> register(@Valid @RequestBody RegisterUserDto newUser) {
         try {
             if (userDao.getUserByUsername(newUser.getUsername()) != null) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "User already exists.");
-            } else {
-                userDao.createUser(newUser);
             }
+            if (!newUser.getPassword().equals(newUser.getConfirmPassword())) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Passwords do not match.");
+            }
+
+            // Create the user
+            User createdUser = userDao.createUser(newUser);
+            return ResponseEntity.status(HttpStatus.CREATED).body(createdUser);
         }
-        catch (DaoException e) {
+        catch (DaoException | UserCreationException e) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "User registration failed.");
         }
     }
@@ -77,7 +83,7 @@ public class AuthenticationController {
         try {
             // Assuming the user's ID can be retrieved from the security context
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-            Long actingUserId = ((User) authentication.getPrincipal()).getUserId(); // Assuming User extends UserDetails
+            Long actingUserId = ((User) authentication.getPrincipal()).getUserId(); // Ensure User is the principal type
 
             userDao.deleteUserByUsername(username, actingUserId);
             return ResponseEntity.noContent().build(); // 204 No Content if successful

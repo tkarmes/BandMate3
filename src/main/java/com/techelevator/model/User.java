@@ -8,7 +8,7 @@ import java.util.Objects;
 import java.util.Set;
 
 @Entity
-@Table(name = "Users")
+@Table(name = "users")
 public class User {
 
    @Id
@@ -48,7 +48,7 @@ public class User {
       this.email = email;
       this.passwordHash = passwordHash;
       this.userType = userType;
-      this.createdAt = new Date(); // Set current time when user is created
+      //this.createdAt = new Date(); // Set current time when user is created
       this.authorities.add(new Authority("ROLE_USER")); // Default role
    }
 

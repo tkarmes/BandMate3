@@ -20,6 +20,10 @@ public class RegisterUserDto {
     @NotEmpty(message = "Confirm Password cannot be empty.")
     private String confirmPassword;
 
+    @NotEmpty(message = "Please select a user type for this user.")
+    @Pattern(regexp = "Musician|VenueOwner", message = "User type must be either Musician or VenueOwner.")
+    private String userType;
+
     @NotEmpty(message = "Please select a role for this user.")
     @Pattern(regexp = "ROLE_(ADMIN|USER)", message = "Role must be either ROLE_ADMIN or ROLE_USER.")
     private String role;
@@ -46,6 +50,14 @@ public class RegisterUserDto {
 
     public void setConfirmPassword(String confirmPassword) {
         this.confirmPassword = confirmPassword;
+    }
+
+    public String getUserType() {
+        return userType;
+    }
+
+    public void setUserType(String userType) {
+        this.userType = userType;
     }
 
     public String getRole() {

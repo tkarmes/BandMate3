@@ -105,10 +105,12 @@ public class User {
       return authorities;
    }
 
+   //in case I need it someday
    public void setAuthorities(Set<Authority> authorities) {
       this.authorities = authorities;
    }
 
+   //in case I need it someday
    public void setAuthorities(String authorities) {
       this.authorities.clear(); // Clear existing authorities before adding new ones
       String[] roles = authorities.split(",");

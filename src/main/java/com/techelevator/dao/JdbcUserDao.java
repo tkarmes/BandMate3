@@ -27,14 +27,21 @@ public class JdbcUserDao implements UserDao {
         this.jdbcTemplate = jdbcTemplate;
     }
 
+
+
     @Override
     public User getUserById(Long userId) {
+        User user = null;
         String sql = "SELECT user_id, username, email, password_hash, user_type, created_at FROM users WHERE user_id = ?";
         try {
-            return jdbcTemplate.queryForObject(sql, new UserRowMapper(), userId);
+            SqlRowSet results = jdbcTemplate.queryForRowSet(sql, userId);
+            if (results.next()) {
+                user = mapRowToUser(results);
+            }
         } catch (CannotGetJdbcConnectionException e) {
             throw new DaoException("Unable to connect to server or database", e);
         }
+        return user;
     }
 
     @Override
@@ -47,16 +54,25 @@ public class JdbcUserDao implements UserDao {
         }
     }
 
+
+
     @Override
     public User getUserByUsername(String username) {
         if (username == null) throw new IllegalArgumentException("Username cannot be null");
+        User user = null;
         String sql = "SELECT user_id, username, email, password_hash, user_type, created_at FROM users WHERE username = LOWER(TRIM(?));";
         try {
-            return jdbcTemplate.queryForObject(sql, new UserRowMapper(), username);
+            SqlRowSet rowSet = jdbcTemplate.queryForRowSet(sql, username);
+            if (rowSet.next()) {
+                user = mapRowToUser(rowSet);
+            }
         } catch (CannotGetJdbcConnectionException e) {
             throw new DaoException("Unable to connect to server or database", e);
         }
+        return user;
     }
+
+
 
     @Override
     public User createUser(RegisterUserDto user) throws UserCreationException {

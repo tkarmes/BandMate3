@@ -58,7 +58,6 @@ public class AuthenticationController {
         return new ResponseEntity<>(new LoginResponseDto(jwt, user), httpHeaders, HttpStatus.OK);
     }
 
-    @ResponseStatus(HttpStatus.CREATED)
     @RequestMapping(path = "/register", method = RequestMethod.POST)
     public ResponseEntity<User> register(@Valid @RequestBody RegisterUserDto newUser) {
         try {

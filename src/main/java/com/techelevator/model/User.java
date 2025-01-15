@@ -105,23 +105,7 @@ public class User {
       return authorities;
    }
 
-   //in case I need it someday
-   public void setAuthorities(Set<Authority> authorities) {
-      this.authorities = authorities;
-   }
 
-   //in case I need it someday
-   public void setAuthorities(String authorities) {
-      this.authorities.clear(); // Clear existing authorities before adding new ones
-      String[] roles = authorities.split(",");
-      for (String role : roles) {
-         try {
-            this.authorities.add(new Authority(role.trim()));
-         } catch (IllegalArgumentException e) {
-            System.err.println("Invalid authority: " + role + ". Skipping.");
-         }
-      }
-   }
 
    @Override
    public boolean equals(Object o) {

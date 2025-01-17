@@ -21,4 +21,7 @@ public interface UserDao {
     void deleteUserById(Long userId, Long actingUserId) throws UserNotFoundException, UserDeletionException;
 
     void deleteUserByUsername(String username, Long actingUserId) throws UserNotFoundException, UserDeletionException;
+
+
+
 }

@@ -139,6 +139,6 @@ public class User {
    }
 
    public enum UserType {
-      Musician, VenueOwner
+      Musician, VenueOwner, Admin
    }
 }

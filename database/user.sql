@@ -2,7 +2,6 @@
 -- This script creates the database users and grants them the necessary permissions
 -- ********************************************************************************
 
-
 CREATE USER bandmate3_admin
 WITH PASSWORD 'softwareforsofties';
 

@@ -22,6 +22,8 @@ import com.techelevator.dao.UserDao;
 import com.techelevator.security.jwt.JWTFilter;
 import com.techelevator.security.jwt.TokenProvider;
 
+import java.security.Principal;
+
 @RestController
 @CrossOrigin
 public class AuthenticationController {
@@ -70,6 +72,7 @@ public class AuthenticationController {
 
             // Create the user
             User createdUser = userDao.createUser(newUser);
+
             return ResponseEntity.status(HttpStatus.CREATED).body(createdUser);
         }
         catch (DaoException | UserCreationException e) {
@@ -78,19 +81,18 @@ public class AuthenticationController {
     }
 
     @DeleteMapping("/users/{username}")
-    public ResponseEntity<Void> deleteUserByUsername(@PathVariable String username) {
+    public ResponseEntity<Void> deleteUserByUsername(@PathVariable String username, Principal principal) {
         try {
-            // Assuming the user's ID can be retrieved from the security context
-            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-            Long actingUserId = ((User) authentication.getPrincipal()).getUserId(); // Ensure User is the principal type
 
-            userDao.deleteUserByUsername(username, actingUserId);
-            return ResponseEntity.noContent().build(); // 204 No Content if successful
+                User actingUser = userDao.getUserByUsername(principal.getName());
+                Long actingUserId = actingUser.getUserId();
+                userDao.deleteUserByUsername(username, actingUserId);
+
+            return ResponseEntity.noContent().build();
         } catch (UserNotFoundException e) {
-            return ResponseEntity.notFound().build(); // 404 Not Found if user not found
+            return ResponseEntity.notFound().build();
         } catch (UserDeletionException e) {
-            // You might want to return a more specific status code or message here
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build(); // 403 Forbidden if the user doesn't have permission
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
     }
 }

@@ -9,4 +9,4 @@ WHERE datname = 'bandmate3';
 
 DROP DATABASE bandmate3;
 
-DROP USER bandmate3_appuser;
+DROP USER bandmate3_admin;

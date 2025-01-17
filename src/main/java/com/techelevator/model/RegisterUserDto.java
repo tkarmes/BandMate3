@@ -22,7 +22,7 @@ public class RegisterUserDto {
     private String confirmPassword;
 
     @NotEmpty(message = "Please select a user type for this user.")
-    @Pattern(regexp = "Musician|VenueOwner", message = "User type must be either Musician or VenueOwner.")
+    @Pattern(regexp = "Musician|VenueOwner|Admin", message = "User type must be either Musician, VenueOwner or Admin.")
     private String userType;
 
     @NotEmpty(message = "Please select a role for this user.")

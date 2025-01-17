@@ -16,7 +16,7 @@ CREATE TABLE users (
     username VARCHAR(50) UNIQUE NOT NULL,
     email VARCHAR(100) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
-    user_type VARCHAR(10) CHECK (user_type IN ('Musician', 'VenueOwner')),
+    user_type VARCHAR(10) CHECK (user_type IN ('Musician', 'VenueOwner', 'Admin')),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -85,5 +85,7 @@ CREATE TABLE user_authorities (
     CONSTRAINT check_valid_roles CHECK (authority_name IN ('ROLE_ADMIN', 'ROLE_USER'))
 );
 
+
 -- Commit the transaction
 COMMIT;
+

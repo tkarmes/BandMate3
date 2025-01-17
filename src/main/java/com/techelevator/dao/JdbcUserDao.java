@@ -108,7 +108,19 @@ public class JdbcUserDao implements UserDao {
             throw new UserDeletionException("User does not have permission to delete this profile");
         }
 
-        String sql = "DELETE FROM users WHERE user_id = ?";
+        String sql = "DELETE FROM user_authorities WHERE user_id = ?";
+        try {
+            int rowsAffected = jdbcTemplate.update(sql, userId);
+            if (rowsAffected == 0) {
+                throw new UserNotFoundException("User not found or already deleted");
+            }
+        } catch (CannotGetJdbcConnectionException e) {
+            throw new DaoException("Unable to connect to server or database", e);
+        } catch (DataIntegrityViolationException e) {
+            throw new UserDeletionException("Cannot delete user due to database integrity constraints", e);
+        }
+
+        sql = "DELETE FROM users WHERE user_id = ?";
         try {
             int rowsAffected = jdbcTemplate.update(sql, userId);
             if (rowsAffected == 0) {
@@ -172,4 +184,6 @@ public class JdbcUserDao implements UserDao {
             return mapRowToUser((SqlRowSet) rs);
         }
     }
+
+
 }

@@ -27,8 +27,6 @@ public class JdbcUserDao implements UserDao {
         this.jdbcTemplate = jdbcTemplate;
     }
 
-
-
     @Override
     public User getUserById(Long userId) {
         User user = null;
@@ -54,8 +52,6 @@ public class JdbcUserDao implements UserDao {
         }
     }
 
-
-
     @Override
     public User getUserByUsername(String username) {
         if (username == null) throw new IllegalArgumentException("Username cannot be null");
@@ -71,8 +67,6 @@ public class JdbcUserDao implements UserDao {
         }
         return user;
     }
-
-
 
     @Override
     public User createUser(RegisterUserDto user) throws UserCreationException {
@@ -97,20 +91,28 @@ public class JdbcUserDao implements UserDao {
 
     @Override
     public void deleteUserById(Long userId, Long actingUserId) throws UserNotFoundException, UserDeletionException {
-        // Retrieve the user to be deleted
         User userToDelete = getUserById(userId);
+        deleteUser(userToDelete, actingUserId);
+    }
+
+    @Override
+    public void deleteUserByUsername(String username, Long actingUserId) throws UserNotFoundException, UserDeletionException {
+        User userToDelete = getUserByUsername(username);
+        deleteUser(userToDelete, actingUserId);
+    }
+
+    private void deleteUser(User userToDelete, Long actingUserId) throws UserNotFoundException, UserDeletionException {
         if (userToDelete == null) {
-            throw new UserNotFoundException("User with ID " + userId + " not found");
+            throw new UserNotFoundException("User not found");
         }
 
-        // Check if the acting user has permission to delete this user
         if (!canDeleteUser(userToDelete, actingUserId)) {
             throw new UserDeletionException("User does not have permission to delete this profile");
         }
 
         String sql = "DELETE FROM user_authorities WHERE user_id = ?";
         try {
-            int rowsAffected = jdbcTemplate.update(sql, userId);
+            int rowsAffected = jdbcTemplate.update(sql, userToDelete.getUserId());
             if (rowsAffected == 0) {
                 throw new UserNotFoundException("User not found or already deleted");
             }
@@ -122,7 +124,7 @@ public class JdbcUserDao implements UserDao {
 
         sql = "DELETE FROM users WHERE user_id = ?";
         try {
-            int rowsAffected = jdbcTemplate.update(sql, userId);
+            int rowsAffected = jdbcTemplate.update(sql, userToDelete.getUserId());
             if (rowsAffected == 0) {
                 throw new UserNotFoundException("User not found or already deleted");
             }
@@ -133,25 +135,10 @@ public class JdbcUserDao implements UserDao {
         }
     }
 
-    @Override
-    public void deleteUserByUsername(String username, Long actingUserId) throws UserNotFoundException, UserDeletionException {
-        // Retrieve the user to be deleted
-        User userToDelete = getUserByUsername(username);
-        if (userToDelete == null) {
-            throw new UserNotFoundException("User with username " + username + " not found");
-        }
-
-        // Use the already implemented deleteUserById method
-        deleteUserById(userToDelete.getUserId(), actingUserId);
-    }
-
-    // Helper method to check if the acting user can delete the target user
     private boolean canDeleteUser(User userToDelete, Long actingUserId) {
-        // User can delete their own account or an admin can delete any account
         return actingUserId.equals(userToDelete.getUserId()) || isAdmin(actingUserId);
     }
 
-    // Method to check if the user is an admin
     private boolean isAdmin(Long userId) {
         String sql = "SELECT COUNT(*) FROM user_authorities WHERE user_id = ? AND authority_name = 'ROLE_ADMIN'";
         SqlRowSet results = jdbcTemplate.queryForRowSet(sql, userId);
@@ -167,7 +154,6 @@ public class JdbcUserDao implements UserDao {
         user.setUserType(User.UserType.valueOf(rs.getString("user_type")));
         user.setCreatedAt(rs.getTimestamp("created_at"));
 
-        // Fetch authorities from the user_authorities table
         String sqlAuthorities = "SELECT authority_name FROM user_authorities WHERE user_id = ?";
         List<String> roles = jdbcTemplate.queryForList(sqlAuthorities, String.class, user.getUserId());
         for (String role : roles) {
@@ -177,13 +163,10 @@ public class JdbcUserDao implements UserDao {
         return user;
     }
 
-    // Custom RowMapper for User
     private class UserRowMapper implements RowMapper<User> {
         @Override
         public User mapRow(java.sql.ResultSet rs, int rowNum) throws java.sql.SQLException {
             return mapRowToUser((SqlRowSet) rs);
         }
     }
-
-
 }

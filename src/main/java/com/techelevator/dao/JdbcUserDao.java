@@ -4,7 +4,7 @@ import com.techelevator.exception.DaoException;
 import com.techelevator.exception.UserCreationException;
 import com.techelevator.exception.UserNotFoundException;
 import com.techelevator.exception.UserDeletionException;
-import com.techelevator.model.RegisterUserDto;
+import com.techelevator.dto.RegisterUserDto;
 import com.techelevator.model.User;
 import com.techelevator.model.Authority;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -15,7 +15,6 @@ import org.springframework.jdbc.support.rowset.SqlRowSet;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @Component

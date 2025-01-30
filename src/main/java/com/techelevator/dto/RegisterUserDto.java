@@ -1,4 +1,4 @@
-package com.techelevator.model;
+package com.techelevator.dto;
 
 import javax.validation.constraints.NotEmpty;
 import javax.validation.constraints.Pattern;

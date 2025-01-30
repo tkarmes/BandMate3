@@ -1,7 +1,7 @@
 package com.techelevator.dao;
 
 import com.techelevator.exception.UserNotFoundException;
-import com.techelevator.model.RegisterUserDto;
+import com.techelevator.dto.RegisterUserDto;
 import com.techelevator.model.User;
 import com.techelevator.exception.UserDeletionException;
 import com.techelevator.exception.UserCreationException;

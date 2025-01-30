@@ -31,11 +31,15 @@ public class AuthenticationController {
     private final TokenProvider tokenProvider;
     private final AuthenticationManagerBuilder authenticationManagerBuilder;
     private final UserDao userDao;
+    private final MessageDao messageDao;
+    private final ConversationDao conversationDao;
 
-    public AuthenticationController(TokenProvider tokenProvider, AuthenticationManagerBuilder authenticationManagerBuilder, UserDao userDao) {
+    public AuthenticationController(TokenProvider tokenProvider, AuthenticationManagerBuilder authenticationManagerBuilder, UserDao userDao, MessageDao messageDao, ConversationDao conversationDao) {
         this.tokenProvider = tokenProvider;
         this.authenticationManagerBuilder = authenticationManagerBuilder;
         this.userDao = userDao;
+        this.messageDao = messageDao;
+        this.conversationDao = conversationDao;
     }
 
     @RequestMapping(path = "/login", method = RequestMethod.POST)
@@ -95,4 +99,39 @@ public class AuthenticationController {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
     }
+
+    @PostMapping("/conversations")
+    public ResponseEntity<Conversation> createConversation(@RequestBody ConversationDto conversationDto, Principal principal) {
+        try {
+            User sender = userDao.getUserByUsername(principal.getName());
+            List<User> participants = conversationDto.getParticipants(); // Assuming you pass participants in the DTO
+            Conversation newConversation = conversationDao.createConversation(sender, participants);
+            return new ResponseEntity<>(newConversation, HttpStatus.CREATED);
+        } catch (DaoException e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to create conversation");
+        }
+    }
+
+    @PostMapping("/messages")
+    public ResponseEntity<Message> sendMessage(@RequestBody MessageDto messageDto, Principal principal) {
+        try {
+            User sender = userDao.getUserByUsername(principal.getName());
+            Message message = messageDao.sendMessage(messageDto.getConversationId(), sender.getUserId(), messageDto.getReceiverId(), messageDto.getContent(), messageDto.getParentMessageId());
+            return new ResponseEntity<>(message, HttpStatus.CREATED);
+        } catch (DaoException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Failed to send message");
+        }
+    }
+
+    @GetMapping("/conversations/{conversationId}/messages")
+    public ResponseEntity<List<Message>> getMessagesForConversation(@PathVariable Long conversationId, Principal principal) {
+        try {
+            List<Message> messages = messageDao.getMessagesByConversation(conversationId);
+            return new ResponseEntity<>(messages, HttpStatus.OK);
+        } catch (DaoException e) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Conversation not found");
+        }
+    }
+
+
 }

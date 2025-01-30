@@ -2,6 +2,7 @@ BEGIN TRANSACTION;
 
 -- Drop tables if they already exist (for reset purposes)
 DROP TABLE IF EXISTS messages CASCADE;
+DROP TABLE IF EXISTS conversations CASCADE;  -- New table for conversation management
 DROP TABLE IF EXISTS user_instruments CASCADE;
 DROP TABLE IF EXISTS instruments CASCADE;
 DROP TABLE IF EXISTS projects CASCADE;
@@ -68,13 +69,22 @@ CREATE TABLE venues (
     contact_info VARCHAR(100)
 );
 
--- Create messages table
+-- Create conversations table to manage separate conversation threads
+CREATE TABLE conversations (
+    conversation_id SERIAL PRIMARY KEY,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create messages table with threaded conversations
 CREATE TABLE messages (
     message_id SERIAL PRIMARY KEY,
+    conversation_id INT REFERENCES conversations(conversation_id),
     sender_id INT REFERENCES users(user_id),
     receiver_id INT REFERENCES users(user_id),
     content TEXT NOT NULL,
-    sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    parent_message_id INT,
+    sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (parent_message_id) REFERENCES messages(message_id)
 );
 
 -- Create user_authorities table
@@ -85,7 +95,5 @@ CREATE TABLE user_authorities (
     CONSTRAINT check_valid_roles CHECK (authority_name IN ('ROLE_ADMIN', 'ROLE_USER'))
 );
 
-
 -- Commit the transaction
 COMMIT;
-

@@ -2,6 +2,7 @@ BEGIN TRANSACTION;
 
 -- Drop tables if they already exist (for reset purposes)
 DROP TABLE IF EXISTS messages CASCADE;
+DROP TABLE IF EXISTS conversation_participants CASCADE;  -- New table for participants
 DROP TABLE IF EXISTS conversations CASCADE;  -- New table for conversation management
 DROP TABLE IF EXISTS user_instruments CASCADE;
 DROP TABLE IF EXISTS instruments CASCADE;
@@ -75,21 +76,27 @@ CREATE TABLE conversations (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Create conversation_participants table to track participants in each conversation
+CREATE TABLE conversation_participants (
+    conversation_id INT REFERENCES conversations(conversation_id) ON DELETE CASCADE,
+    user_id INT REFERENCES users(user_id) ON DELETE CASCADE,
+    PRIMARY KEY (conversation_id, user_id)
+);
+
 -- Create messages table with threaded conversations
 CREATE TABLE messages (
     message_id SERIAL PRIMARY KEY,
-    conversation_id INT REFERENCES conversations(conversation_id),
-    sender_id INT REFERENCES users(user_id),
-    receiver_id INT REFERENCES users(user_id),
+    conversation_id INT REFERENCES conversations(conversation_id) ON DELETE CASCADE,
+    sender_id INT REFERENCES users(user_id) ON DELETE CASCADE,
+    receiver_id INT REFERENCES users(user_id) ON DELETE CASCADE,
     content TEXT NOT NULL,
-    parent_message_id INT,
-    sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (parent_message_id) REFERENCES messages(message_id)
+    parent_message_id INT REFERENCES messages(message_id) ON DELETE CASCADE,
+    sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Create user_authorities table
 CREATE TABLE user_authorities (
-    user_id BIGINT NOT NULL REFERENCES users(user_id),
+    user_id BIGINT NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
     authority_name VARCHAR(50) NOT NULL,
     PRIMARY KEY (user_id, authority_name),
     CONSTRAINT check_valid_roles CHECK (authority_name IN ('ROLE_ADMIN', 'ROLE_USER'))

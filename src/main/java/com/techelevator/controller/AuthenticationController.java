@@ -16,6 +16,7 @@ import org.springframework.security.config.annotation.authentication.builders.Au
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.techelevator.dao.UserDao;
@@ -134,6 +135,30 @@ public class AuthenticationController {
             return new ResponseEntity<>(messages, HttpStatus.OK);
         } catch (DaoException e) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Conversation not found");
+        }
+    }
+
+    @PostMapping("/users/{userId}/profile-picture")
+    public ResponseEntity<String> uploadProfilePicture(@PathVariable Long userId, @RequestParam("file") MultipartFile file, Principal principal) {
+        if (file.isEmpty()) {
+            return new ResponseEntity<>("Please select a file to upload", HttpStatus.BAD_REQUEST);
+        }
+
+        try {
+            User user = userDao.getUserById(userId);
+            if (user == null) {
+                return new ResponseEntity<>("User not found", HttpStatus.NOT_FOUND);
+            }
+
+            if (!principal.getName().equals(user.getUsername())) {
+                return new ResponseEntity<>("You do not have permission to update this user's profile picture", HttpStatus.FORBIDDEN);
+            }
+
+            String fileName = userDao.uploadProfilePicture(userId, file);
+
+            return new ResponseEntity<>("Profile picture uploaded successfully: " + fileName, HttpStatus.OK);
+        } catch (DaoException e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to upload profile picture");
         }
     }
 

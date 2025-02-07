@@ -14,8 +14,14 @@ import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.support.rowset.SqlRowSet;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Component;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
+import java.util.UUID;
 
 @Component
 public class JdbcUserDao implements UserDao {
@@ -42,7 +48,7 @@ public class JdbcUserDao implements UserDao {
     }
 
     @Override
-    public List<User> getUsers() {
+    public List getUsers() {
         String sql = "SELECT user_id, username, email, password_hash, user_type, created_at FROM users";
         try {
             return jdbcTemplate.query(sql, new UserRowMapper());
@@ -154,18 +160,53 @@ public class JdbcUserDao implements UserDao {
         user.setCreatedAt(rs.getTimestamp("created_at"));
 
         String sqlAuthorities = "SELECT authority_name FROM user_authorities WHERE user_id = ?";
-        List<String> roles = jdbcTemplate.queryForList(sqlAuthorities, String.class, user.getUserId());
-        for (String role : roles) {
-            user.getAuthorities().add(new Authority(role));
+        List roles = jdbcTemplate.queryForList(sqlAuthorities, String.class, user.getUserId());
+        for (Object role : roles) {
+            user.getAuthorities().add(new Authority((String) role));
         }
 
         return user;
     }
 
-    private class UserRowMapper implements RowMapper<User> {
+    private class UserRowMapper implements RowMapper {
         @Override
         public User mapRow(java.sql.ResultSet rs, int rowNum) throws java.sql.SQLException {
             return mapRowToUser((SqlRowSet) rs);
+        }
+    }
+
+    @Override
+    public String uploadProfilePicture(Long userId, MultipartFile file) throws UserNotFoundException {
+        User user = getUserById(userId);
+
+        if (user == null) {
+            throw new UserNotFoundException("User not found with ID: " + userId);
+        }
+
+        try {
+            // Generate a unique filename
+            String fileName = UUID.randomUUID().toString() + "_" + file.getOriginalFilename();
+
+            // Define the path where you want to store the file
+            Path uploadsDir = Paths.get("src", "main", "resources", "uploads");
+            if (!Files.exists(uploadsDir)) {
+                Files.createDirectories(uploadsDir);
+            }
+            Path path = uploadsDir.resolve(fileName);
+
+            // Write the file to the specified path
+            Files.write(path, file.getBytes());
+
+            // Update the user's profile picture URL in the database
+            String sql = "UPDATE profiles SET profile_picture_url = ? WHERE user_id = ?";
+            jdbcTemplate.update(sql, "uploads/" + fileName, userId); // Store relative path for simplicity
+
+            return fileName; // Return the filename here
+
+        } catch (IOException e) {
+            throw new DaoException("Could not store the file. Error: " + e.getMessage(), e);
+        } catch (CannotGetJdbcConnectionException e) {
+            throw new DaoException("Unable to connect to server or database", e);
         }
     }
 }

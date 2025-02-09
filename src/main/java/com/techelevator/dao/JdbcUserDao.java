@@ -5,9 +5,7 @@ import com.techelevator.exception.UserCreationException;
 import com.techelevator.exception.UserNotFoundException;
 import com.techelevator.exception.UserDeletionException;
 import com.techelevator.dto.RegisterUserDto;
-import com.techelevator.model.User;
-import com.techelevator.model.Profile;
-import com.techelevator.model.Authority;
+import com.techelevator.model.*;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.CannotGetJdbcConnectionException;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -88,11 +86,7 @@ public class JdbcUserDao implements UserDao {
             String role = user.getRole().toUpperCase().startsWith("ROLE_") ? user.getRole().toUpperCase() : "ROLE_" + user.getRole().toUpperCase();
             jdbcTemplate.update(insertAuthoritySql, newUserId, role);
 
-            // Create profile
-            String insertProfileSql = "INSERT INTO profiles (user_id) VALUES (?)";
-            jdbcTemplate.update(insertProfileSql, newUserId);
-
-            return getUserById(newUserId); // Retrieve the newly created user with profile
+            return getUserById(newUserId); // Retrieve the newly created user
         } catch (DataIntegrityViolationException e) {
             throw new UserCreationException("User creation failed due to data integrity violation", e);
         } catch (Exception e) {
@@ -121,12 +115,8 @@ public class JdbcUserDao implements UserDao {
             throw new UserDeletionException("User does not have permission to delete this profile");
         }
 
-        // Delete from profiles first to maintain referential integrity
-        String sql = "DELETE FROM profiles WHERE user_id = ?";
-        jdbcTemplate.update(sql, userToDelete.getUserId());
-
         // Now delete from user_authorities
-        sql = "DELETE FROM user_authorities WHERE user_id = ?";
+        String sql = "DELETE FROM user_authorities WHERE user_id = ?";
         try {
             int rowsAffected = jdbcTemplate.update(sql, userToDelete.getUserId());
             if (rowsAffected == 0) {
@@ -176,30 +166,7 @@ public class JdbcUserDao implements UserDao {
         List<Authority> authorityList = roles.stream().map(Authority::new).toList();
         user.getAuthorities().addAll(authorityList);
 
-        // Fetch profile
-        Profile profile = getProfileByUserId(user.getUserId());
-        user.setProfile(profile);
-
         return user;
-    }
-
-    public Profile getProfileByUserId(Long userId) {
-        String sql = "SELECT * FROM profiles WHERE user_id = ?";
-        SqlRowSet rs = jdbcTemplate.queryForRowSet(sql, userId);
-        if (rs.next()) {
-            Profile profile = new Profile();
-            profile.setProfileId(rs.getLong("profile_id"));
-            profile.setUser(new User(userId)); // Just setting user_id here, full User might need to be fetched separately
-            profile.setBio(rs.getString("bio"));
-            profile.setLocation(rs.getString("location"));
-            profile.setGenres(rs.getString("genres")); // Directly setting as a string
-            profile.setInstruments(rs.getString("instruments")); // Changed to single string
-            profile.setVenueName(rs.getString("venue_name"));
-            profile.setCapacity(rs.getInt("capacity"));
-            profile.setProfilePictureUrl(rs.getString("profile_picture_url"));
-            return profile;
-        }
-        return null;
     }
 
     private class UserRowMapper implements RowMapper<User> {
@@ -232,11 +199,9 @@ public class JdbcUserDao implements UserDao {
             // Write the file to the specified path
             Files.write(path, file.getBytes());
 
-            // Update the user's profile picture URL in the database
-            String sql = "UPDATE profiles SET profile_picture_url = ? WHERE user_id = ?";
-            jdbcTemplate.update(sql, "uploads/" + fileName, userId); // Store relative path for simplicity
-
-            return fileName; // Return the filename here
+            // Since profiles are removed, we'll need to handle profile pictures differently, possibly storing in user table
+            // For now, we'll assume this is not implemented
+            throw new UnsupportedOperationException("Profile picture upload not supported without profile entities");
 
         } catch (IOException e) {
             throw new DaoException("Could not store the file. Error: " + e.getMessage(), e);
@@ -246,62 +211,45 @@ public class JdbcUserDao implements UserDao {
     }
 
     @Override
-    public void addInstrumentToUser(Long userId, String instrumentName) {
-        String getInstrumentsSql = "SELECT instruments FROM profiles WHERE user_id = ?";
-        String updateInstrumentsSql = "UPDATE profiles SET instruments = ? WHERE user_id = ?";
+    public void addInstrumentToMusician(Long userId, String instrumentName) {
+        // Since profiles are removed, we'll need to handle instruments differently, possibly storing in user table
+        // For now, we'll assume this is not implemented
+        throw new UnsupportedOperationException("Instrument addition not supported without profile entities");
+    }
 
-        try {
-            String currentInstruments = jdbcTemplate.queryForObject(getInstrumentsSql, String.class, userId);
-            String newInstruments = currentInstruments != null
-                    ? currentInstruments + (currentInstruments.isEmpty() ? "" : ", ") + instrumentName
-                    : instrumentName;
-            jdbcTemplate.update(updateInstrumentsSql, newInstruments, userId);
-
-        } catch (CannotGetJdbcConnectionException e) {
-            throw new DaoException("Unable to connect to server or database", e);
-        } catch (Exception e) {
-            throw new DaoException("Failed to add instrument to user", e);
-        }
+    // Removed methods related to profiles since they are no longer applicable
+    @Override
+    public void saveMusicianProfile(Long userId, MusicianProfile profile) {
+        throw new UnsupportedOperationException("Musician profile operations not supported without profile entities");
     }
 
     @Override
-    public void saveUserWithProfile(User user) {
-        if (user.getProfile() != null) {
-            Profile profile = user.getProfile();
-            String updateProfileSql = "UPDATE profiles SET bio = ?, location = ?, genres = ?, instruments = ?, venue_name = ?, capacity = ?, profile_picture_url = ? WHERE user_id = ?";
-
-            jdbcTemplate.update(updateProfileSql,
-                    profile.getBio(),
-                    profile.getLocation(),
-                    profile.getGenres(),
-                    profile.getInstruments(), // Now directly using the string
-                    profile.getVenueName(),
-                    profile.getCapacity(),
-                    profile.getProfilePictureUrl(),
-                    user.getUserId()
-            );
-        }
+    public void updateMusicianProfile(Long userId, MusicianProfile profile) {
+        throw new UnsupportedOperationException("Musician profile operations not supported without profile entities");
     }
 
     @Override
-    public void updateUserProfile(Long userId, Profile profile) {
-        String updateProfileSql = "UPDATE profiles SET bio = ?, location = ?, genres = ?, instruments = ?, venue_name = ?, capacity = ?, profile_picture_url = ? WHERE user_id = ?";
+    public void addGenrePreferenceToVenue(Long userId, String genrePreference) {
+        throw new UnsupportedOperationException("Venue profile operations not supported without profile entities");
+    }
 
-        try {
-            jdbcTemplate.update(updateProfileSql,
-                    profile.getBio(),
-                    profile.getLocation(),
-                    profile.getGenres(), // Directly using the string
-                    profile.getInstruments(), // Directly using the string
-                    profile.getVenueName(),
-                    profile.getCapacity(),
-                    profile.getProfilePictureUrl(),
-                    userId
-            );
-        } catch (CannotGetJdbcConnectionException e) {
-            throw new DaoException("Unable to connect to server or database", e);
-        } catch (Exception e) {
-            throw new DaoException("Failed to update user profile", e);
-        }
+    @Override
+    public MusicianProfile getMusicianProfileByUserId(Long userId) {
+        throw new UnsupportedOperationException("Musician profile operations not supported without profile entities");
+    }
+
+    @Override
+    public VenueProfile getVenueProfileByUserId(Long userId) {
+        throw new UnsupportedOperationException("Venue profile operations not supported without profile entities");
+    }
+
+    @Override
+    public void saveVenueProfile(Long userId, VenueProfile profile) {
+        throw new UnsupportedOperationException("Venue profile operations not supported without profile entities");
+    }
+
+    @Override
+    public void updateVenueProfile(Long userId, VenueProfile profile) {
+        throw new UnsupportedOperationException("Venue profile operations not supported without profile entities");
     }
 }

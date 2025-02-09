@@ -27,7 +27,6 @@ import com.techelevator.dao.MessageDao;
 import com.techelevator.dao.ConversationDao;
 
 import java.security.Principal;
-import java.util.Arrays;
 import java.util.List;
 
 @RestController
@@ -61,7 +60,7 @@ public class AuthenticationController {
         User user;
         try {
             user = userDao.getUserByUsername(loginDto.getUsername());
-        } catch (DaoException e) {
+        } catch (UserNotFoundException e) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Username or password is incorrect.");
         }
 
@@ -71,7 +70,7 @@ public class AuthenticationController {
     }
 
     @RequestMapping(path = "/register", method = RequestMethod.POST)
-    public ResponseEntity<ProfileDto> register(@Valid @RequestBody RegisterUserDto newUser) {
+    public ResponseEntity<UserDto> register(@Valid @RequestBody RegisterUserDto newUser) {
         try {
             if (userDao.getUserByUsername(newUser.getUsername()) != null) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "User already exists.");
@@ -80,10 +79,9 @@ public class AuthenticationController {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Passwords do not match.");
             }
 
-            // Create the user and profile
+            // Create the user
             User createdUser = userDao.createUser(newUser);
-            Profile profile = createdUser.getProfile(); // Assuming profile is created in createUser method
-            return ResponseEntity.status(HttpStatus.CREATED).body(ProfileDto.fromEntity(profile));
+            return ResponseEntity.status(HttpStatus.CREATED).body(UserDto.fromUser(createdUser));
         } catch (DaoException | UserCreationException e) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "User registration failed.");
         }
@@ -92,10 +90,9 @@ public class AuthenticationController {
     @DeleteMapping("/users/{username}")
     public ResponseEntity<Void> deleteUserByUsername(@PathVariable String username, Principal principal) {
         try {
-
-                User actingUser = userDao.getUserByUsername(principal.getName());
-                Long actingUserId = actingUser.getUserId();
-                userDao.deleteUserByUsername(username, actingUserId);
+            User actingUser = userDao.getUserByUsername(principal.getName());
+            Long actingUserId = actingUser.getUserId();
+            userDao.deleteUserByUsername(username, actingUserId);
 
             return ResponseEntity.noContent().build();
         } catch (UserNotFoundException e) {
@@ -112,7 +109,7 @@ public class AuthenticationController {
             List<User> participants = conversationDto.getParticipants(); // Assuming you pass participants in the DTO
             Conversation newConversation = conversationDao.createConversation(sender, participants);
             return new ResponseEntity<>(newConversation, HttpStatus.CREATED);
-        } catch (DaoException e) {
+        } catch (UserNotFoundException e) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to create conversation");
         }
     }
@@ -123,7 +120,7 @@ public class AuthenticationController {
             User sender = userDao.getUserByUsername(principal.getName());
             Message message = messageDao.sendMessage(messageDto.getConversationId(), sender.getUserId(), messageDto.getReceiverId(), messageDto.getContent(), messageDto.getParentMessageId());
             return new ResponseEntity<>(message, HttpStatus.CREATED);
-        } catch (DaoException e) {
+        } catch (UserNotFoundException e) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Failed to send message");
         }
     }
@@ -139,7 +136,7 @@ public class AuthenticationController {
     }
 
     @PostMapping("/users/{userId}/profile-picture")
-    public ResponseEntity<ProfileDto> uploadProfilePicture(@PathVariable Long userId, @RequestParam("file") MultipartFile file, Principal principal) {
+    public ResponseEntity<UserDto> uploadProfilePicture(@PathVariable Long userId, @RequestParam("file") MultipartFile file, Principal principal) {
         if (file.isEmpty()) {
             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         }
@@ -155,35 +152,36 @@ public class AuthenticationController {
             }
 
             String fileName = userDao.uploadProfilePicture(userId, file);
-            Profile updatedProfile = user.getProfile(); // Assuming profile is updated in the DAO method
-            return new ResponseEntity<>(ProfileDto.fromEntity(updatedProfile), HttpStatus.OK);
-        } catch (DaoException e) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to upload profile picture");
+            User updatedUser = userDao.getUserById(userId); // Refresh user object to get updated profile info if needed
+            return ResponseEntity.ok(UserDto.fromUser(updatedUser));
+        } catch (UserNotFoundException e) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
         }
     }
 
     @PostMapping("/users/{userId}/instruments")
-    public ResponseEntity<ProfileDto> addInstrumentToUser(
+    public ResponseEntity<Void> addInstrumentToUser(
             @PathVariable Long userId,
             @RequestBody String instrumentName,
             Principal principal) {
         try {
             User user = userDao.getUserById(userId);
             if (user == null) {
-                return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+                return ResponseEntity.notFound().build();
             }
 
             if (!principal.getName().equals(user.getUsername())) {
-                return new ResponseEntity<>(HttpStatus.FORBIDDEN);
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
 
-            userDao.addInstrumentToUser(userId, instrumentName);
-            Profile updatedProfile = userDao.getProfileByUserId(userId); // Assuming this method exists in UserDao
-            return new ResponseEntity<>(ProfileDto.fromEntity(updatedProfile), HttpStatus.OK);
-        } catch (DaoException e) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to add instrument to user");
+            if (user.getUserType() != User.UserType.Musician) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+            }
+
+            userDao.addInstrumentToMusician(userId, instrumentName);
+            return ResponseEntity.ok().build();
+        } catch (UserNotFoundException e) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
         }
     }
-
-
 }

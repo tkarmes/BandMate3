@@ -2,8 +2,9 @@ package com.techelevator.dao;
 
 import com.techelevator.exception.UserNotFoundException;
 import com.techelevator.dto.RegisterUserDto;
-import com.techelevator.model.Profile;
+import com.techelevator.model.MusicianProfile;
 import com.techelevator.model.User;
+import com.techelevator.model.VenueProfile;
 import com.techelevator.exception.UserDeletionException;
 import com.techelevator.exception.UserCreationException;
 import org.springframework.web.multipart.MultipartFile;
@@ -26,11 +27,23 @@ public interface UserDao {
 
     String uploadProfilePicture(Long userId, MultipartFile file) throws UserNotFoundException;
 
-    void addInstrumentToUser(Long userId, String instrumentName);
+    // Methods specific to musicians
+    void addInstrumentToMusician(Long userId, String instrumentName);
 
-    void saveUserWithProfile(User createdUser);
+    MusicianProfile getMusicianProfileByUserId(Long userId);
 
-    void updateUserProfile(Long userId, Profile profile);
+    void saveMusicianProfile(Long userId, MusicianProfile profile);
 
-    Profile getProfileByUserId(Long userId);
+    void updateMusicianProfile(Long userId, MusicianProfile profile);
+
+    // Methods specific to venues
+    void addGenrePreferenceToVenue(Long userId, String genrePreference);
+
+    VenueProfile getVenueProfileByUserId(Long userId);
+
+    void saveVenueProfile(Long userId, VenueProfile profile);
+
+    void updateVenueProfile(Long userId, VenueProfile profile);
+
+    // Note: Removed the general Profile methods since we now have specific types
 }

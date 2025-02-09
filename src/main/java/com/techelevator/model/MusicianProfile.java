@@ -1,17 +1,16 @@
 package com.techelevator.model;
 
 import javax.persistence.*;
-import java.util.Arrays;
 import java.util.Objects;
 
 @Entity
-@Table(name = "profiles")
-public class Profile {
+@Table(name = "musician_profiles")
+public class MusicianProfile {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "profile_id")
-    private Long profileId;
+    @Column(name = "musician_profile_id")
+    private Long musicianProfileId;
 
     @OneToOne
     @JoinColumn(name = "user_id", referencedColumnName = "user_id")
@@ -29,26 +28,25 @@ public class Profile {
     @Column(name = "instruments")
     private String instruments;
 
-    // Other fields for VenueOwners like venue_name, capacity
-    @Column(name = "venue_name")
-    private String venueName;
-
-    @Column(name = "capacity")
-    private Integer capacity;
-
     @Column(name = "profile_picture_url")
     private String profilePictureUrl;
 
+    @Column(name = "created_at")
+    private String createdAt;
+
+    @Column(name = "updated_at")
+    private String updatedAt;
+
     // Default constructor
-    public Profile() {}
+    public MusicianProfile() {}
 
     // Getters and Setters
-    public Long getProfileId() {
-        return profileId;
+    public Long getMusicianProfileId() {
+        return musicianProfileId;
     }
 
-    public void setProfileId(Long profileId) {
-        this.profileId = profileId;
+    public void setMusicianProfileId(Long musicianProfileId) {
+        this.musicianProfileId = musicianProfileId;
     }
 
     public User getUser() {
@@ -91,22 +89,6 @@ public class Profile {
         this.instruments = instruments;
     }
 
-    public String getVenueName() {
-        return venueName;
-    }
-
-    public void setVenueName(String venueName) {
-        this.venueName = venueName;
-    }
-
-    public Integer getCapacity() {
-        return capacity;
-    }
-
-    public void setCapacity(Integer capacity) {
-        this.capacity = capacity;
-    }
-
     public String getProfilePictureUrl() {
         return profilePictureUrl;
     }
@@ -115,30 +97,46 @@ public class Profile {
         this.profilePictureUrl = profilePictureUrl;
     }
 
+    public String getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(String createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public String getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(String updatedAt) {
+        this.updatedAt = updatedAt;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        Profile profile = (Profile) o;
-        return Objects.equals(profileId, profile.profileId);
+        MusicianProfile that = (MusicianProfile) o;
+        return Objects.equals(musicianProfileId, that.musicianProfileId);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(profileId);
+        return Objects.hash(musicianProfileId);
     }
 
     @Override
     public String toString() {
-        return "Profile{" +
-                "profileId=" + profileId +
+        return "MusicianProfile{" +
+                "musicianProfileId=" + musicianProfileId +
                 ", bio='" + bio + '\'' +
                 ", location='" + location + '\'' +
                 ", genres='" + genres + '\'' +
                 ", instruments='" + instruments + '\'' +
-                ", venueName='" + venueName + '\'' +
-                ", capacity=" + capacity +
                 ", profilePictureUrl='" + profilePictureUrl + '\'' +
+                ", createdAt='" + createdAt + '\'' +
+                ", updatedAt='" + updatedAt + '\'' +
                 '}';
     }
 }

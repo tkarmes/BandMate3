@@ -2,13 +2,13 @@ BEGIN TRANSACTION;
 
 -- Drop tables if they already exist (for reset purposes)
 DROP TABLE IF EXISTS messages CASCADE;
-DROP TABLE IF EXISTS conversation_participants CASCADE;  -- New table for participants
-DROP TABLE IF EXISTS conversations CASCADE;  -- New table for conversation management
+DROP TABLE IF EXISTS conversation_participants CASCADE;
+DROP TABLE IF EXISTS conversations CASCADE;
 DROP TABLE IF EXISTS user_instruments CASCADE;
 DROP TABLE IF EXISTS instruments CASCADE;
 DROP TABLE IF EXISTS projects CASCADE;
-DROP TABLE IF EXISTS profiles CASCADE;
-DROP TABLE IF EXISTS venues CASCADE;
+DROP TABLE IF EXISTS musician_profiles CASCADE;
+DROP TABLE IF EXISTS venue_profiles CASCADE;
 DROP TABLE IF EXISTS user_authorities CASCADE;
 DROP TABLE IF EXISTS users CASCADE;
 
@@ -18,21 +18,43 @@ CREATE TABLE users (
     username VARCHAR(50) UNIQUE NOT NULL,
     email VARCHAR(100) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
-    user_type VARCHAR(10) CHECK (user_type IN ('Musician', 'VenueOwner', 'Admin')),
+    user_type VARCHAR(10) CHECK (user_type IN ('Musician', 'VenueOwner', 'Admin')) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Create profiles table
-CREATE TABLE profiles (
-    profile_id SERIAL PRIMARY KEY,
+-- Create musician_profiles table
+CREATE TABLE musician_profiles (
+    musician_profile_id SERIAL PRIMARY KEY,
     user_id INT REFERENCES users(user_id) ON DELETE CASCADE,
     bio TEXT,
     location VARCHAR(100),
-    genres TEXT,  
-    instruments TEXT, 
-    venue_name VARCHAR(100),  -- For VenueOwners
-    capacity INT,  -- For VenueOwners
-    profile_picture_url VARCHAR(255)
+    genres TEXT,
+    instruments TEXT,
+    profile_picture_url VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create venue_profiles table
+CREATE TABLE venue_profiles (
+    venue_profile_id SERIAL PRIMARY KEY,
+    user_id INT REFERENCES users(user_id) ON DELETE CASCADE,
+    name VARCHAR(100) NOT NULL,
+    address TEXT,
+    city VARCHAR(50),
+    state VARCHAR(2),
+    zip_code VARCHAR(10),
+    capacity INT,
+    venue_type VARCHAR(50),
+    genre_preferences TEXT[],
+    phone VARCHAR(20),
+    email VARCHAR(100),
+    website_url VARCHAR(255),
+    operating_hours TEXT,
+    amenities TEXT[],
+    profile_picture_url VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Create projects table
@@ -57,17 +79,6 @@ CREATE TABLE user_instruments (
     user_id INT REFERENCES users(user_id) ON DELETE CASCADE,
     instrument_id INT REFERENCES instruments(instrument_id),
     PRIMARY KEY (user_id, instrument_id)
-);
-
--- Create venues table
-CREATE TABLE venues (
-    venue_id SERIAL PRIMARY KEY,
-    owner_id INT REFERENCES users(user_id) ON DELETE CASCADE,
-    name VARCHAR(100) NOT NULL,
-    address VARCHAR(255),
-    capacity INT,
-    genre_preferences TEXT[],  -- Array for preferred genres
-    contact_info VARCHAR(100)
 );
 
 -- Create conversations table to manage separate conversation threads

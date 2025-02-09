@@ -31,6 +31,7 @@ public class Authority {
     * @return The authority name.
     */
    public String getName() {
+
       return name;
    }
 
@@ -40,6 +41,7 @@ public class Authority {
     * @param name The new name for the authority.
     */
    public void setName(String name) {
+
       this.name = name;
    }
 

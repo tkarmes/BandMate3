@@ -28,8 +28,8 @@ CREATE TABLE profiles (
     user_id INT REFERENCES users(user_id) ON DELETE CASCADE,
     bio TEXT,
     location VARCHAR(100),
-    genres TEXT[],  -- Array to store multiple genres
-    instruments TEXT[],  -- Array for musician instruments
+    genres TEXT,  
+    instruments TEXT, 
     venue_name VARCHAR(100),  -- For VenueOwners
     capacity INT,  -- For VenueOwners
     profile_picture_url VARCHAR(255)

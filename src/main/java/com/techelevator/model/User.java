@@ -39,6 +39,9 @@ public class User {
    @Column(name = "authority_name")
    private Set<Authority> authorities = new HashSet<>();
 
+   @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+   private Profile profile;
+
    // Default constructor
    public User() {}
 
@@ -48,8 +51,11 @@ public class User {
       this.email = email;
       this.passwordHash = passwordHash;
       this.userType = userType;
-      //this.createdAt = new Date(); // Set current time when user is created
       this.authorities.add(new Authority("ROLE_USER")); // Default role
+      // Note: Profile is not set in the constructor since it's managed by the Profile entity
+   }
+
+   public User(Long userId) {
    }
 
    // Getters and Setters
@@ -105,7 +111,13 @@ public class User {
       return authorities;
    }
 
+   public Profile getProfile() {
+      return profile;
+   }
 
+   public void setProfile(Profile profile) {
+      this.profile = profile;
+   }
 
    @Override
    public boolean equals(Object o) {
@@ -118,12 +130,13 @@ public class User {
               Objects.equals(passwordHash, user.passwordHash) &&
               userType == user.userType &&
               Objects.equals(createdAt, user.createdAt) &&
-              Objects.equals(this.authorities, user.authorities);
+              Objects.equals(authorities, user.authorities) &&
+              Objects.equals(profile, user.profile);
    }
 
    @Override
    public int hashCode() {
-      return Objects.hash(userId, username, email, passwordHash, userType, createdAt, authorities);
+      return Objects.hash(userId, username, email, passwordHash, userType, createdAt, authorities, profile);
    }
 
    @Override
@@ -135,6 +148,7 @@ public class User {
               ", userType=" + userType +
               ", createdAt=" + createdAt +
               ", authorities=" + authorities +
+              ", profile=" + (profile != null ? profile.toString() : "null") +
               '}';
    }
 

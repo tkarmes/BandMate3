@@ -27,6 +27,7 @@ import com.techelevator.dao.MessageDao;
 import com.techelevator.dao.ConversationDao;
 
 import java.security.Principal;
+import java.util.Arrays;
 import java.util.List;
 
 @RestController
@@ -79,12 +80,18 @@ public class AuthenticationController {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Passwords do not match.");
             }
 
-            // Create the user
+            // Create the user and profile
             User createdUser = userDao.createUser(newUser);
+            Profile profile = new Profile();
+            profile.setUser(createdUser);
+            // Set any default profile data here, like bio, location, etc.
+            createdUser.setProfile(profile);
+
+            // Assuming userDao now handles profile creation too
+            userDao.saveUserWithProfile(createdUser); // You might need to add this method to UserDao
 
             return ResponseEntity.status(HttpStatus.CREATED).body(createdUser);
-        }
-        catch (DaoException | UserCreationException e) {
+        } catch (DaoException | UserCreationException e) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "User registration failed.");
         }
     }
@@ -159,6 +166,45 @@ public class AuthenticationController {
             return new ResponseEntity<>("Profile picture uploaded successfully: " + fileName, HttpStatus.OK);
         } catch (DaoException e) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to upload profile picture");
+        }
+    }
+
+    @PostMapping("/users/{userId}/instruments")
+    public ResponseEntity<User> addInstrumentToUser(
+            @PathVariable Long userId,
+            @RequestBody String instrumentName,
+            Principal principal) {
+        try {
+            User user = userDao.getUserById(userId);
+            if (user == null) {
+                return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+            }
+
+            // Check if the authenticated user is the same as the user being updated
+            if (!principal.getName().equals(user.getUsername())) {
+                return new ResponseEntity<>(HttpStatus.FORBIDDEN);
+            }
+
+            // Add the instrument to the user's profile
+            Profile profile = user.getProfile(); // Assuming profile is eagerly fetched or you fetch it if not
+            if (profile == null) {
+                profile = new Profile();
+                profile.setUser(user);
+                user.setProfile(profile);
+            }
+
+            String currentInstruments = profile.getInstruments() != null ? profile.getInstruments() : "";
+            String newInstruments = currentInstruments.isEmpty() ? instrumentName : currentInstruments + ", " + instrumentName;
+            profile.setInstruments(newInstruments);
+
+            // Assuming userDao now handles profile updates too
+            userDao.updateUserProfile(userId, profile);
+
+            // Refetch user to get updated data
+            User updatedUser = userDao.getUserById(userId);
+            return new ResponseEntity<>(updatedUser, HttpStatus.OK);
+        } catch (DaoException e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to add instrument to user");
         }
     }
 

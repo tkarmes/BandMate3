@@ -6,12 +6,14 @@ import com.techelevator.exception.UserNotFoundException;
 import com.techelevator.exception.UserDeletionException;
 import com.techelevator.dto.RegisterUserDto;
 import com.techelevator.model.User;
+import com.techelevator.model.Profile;
 import com.techelevator.model.Authority;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.CannotGetJdbcConnectionException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.support.rowset.SqlRowSet;
+import org.springframework.lang.Nullable;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
@@ -48,7 +50,7 @@ public class JdbcUserDao implements UserDao {
     }
 
     @Override
-    public List getUsers() {
+    public List<User> getUsers() {
         String sql = "SELECT user_id, username, email, password_hash, user_type, created_at FROM users";
         try {
             return jdbcTemplate.query(sql, new UserRowMapper());
@@ -75,7 +77,7 @@ public class JdbcUserDao implements UserDao {
 
     @Override
     public User createUser(RegisterUserDto user) throws UserCreationException {
-        String insertUserSql = "INSERT INTO users (username, password_hash, user_type, email) values (LOWER(TRIM(?)), ?, ?, ?) RETURNING user_id";
+        String insertUserSql = "INSERT INTO users (username, password_hash, user_type, email) VALUES (LOWER(TRIM(?)), ?, ?, ?) RETURNING user_id";
         String password_hash = new BCryptPasswordEncoder().encode(user.getPassword());
         User.UserType userType = User.UserType.valueOf(user.getUserType());
         try {
@@ -86,7 +88,11 @@ public class JdbcUserDao implements UserDao {
             String role = user.getRole().toUpperCase().startsWith("ROLE_") ? user.getRole().toUpperCase() : "ROLE_" + user.getRole().toUpperCase();
             jdbcTemplate.update(insertAuthoritySql, newUserId, role);
 
-            return getUserById(newUserId); // Retrieve the newly created user
+            // Create profile
+            String insertProfileSql = "INSERT INTO profiles (user_id) VALUES (?)";
+            jdbcTemplate.update(insertProfileSql, newUserId);
+
+            return getUserById(newUserId); // Retrieve the newly created user with profile
         } catch (DataIntegrityViolationException e) {
             throw new UserCreationException("User creation failed due to data integrity violation", e);
         } catch (Exception e) {
@@ -115,7 +121,12 @@ public class JdbcUserDao implements UserDao {
             throw new UserDeletionException("User does not have permission to delete this profile");
         }
 
-        String sql = "DELETE FROM user_authorities WHERE user_id = ?";
+        // Delete from profiles first to maintain referential integrity
+        String sql = "DELETE FROM profiles WHERE user_id = ?";
+        jdbcTemplate.update(sql, userToDelete.getUserId());
+
+        // Now delete from user_authorities
+        sql = "DELETE FROM user_authorities WHERE user_id = ?";
         try {
             int rowsAffected = jdbcTemplate.update(sql, userToDelete.getUserId());
             if (rowsAffected == 0) {
@@ -127,6 +138,7 @@ public class JdbcUserDao implements UserDao {
             throw new UserDeletionException("Cannot delete user due to database integrity constraints", e);
         }
 
+        // Finally, delete the user
         sql = "DELETE FROM users WHERE user_id = ?";
         try {
             int rowsAffected = jdbcTemplate.update(sql, userToDelete.getUserId());
@@ -160,17 +172,40 @@ public class JdbcUserDao implements UserDao {
         user.setCreatedAt(rs.getTimestamp("created_at"));
 
         String sqlAuthorities = "SELECT authority_name FROM user_authorities WHERE user_id = ?";
-        List roles = jdbcTemplate.queryForList(sqlAuthorities, String.class, user.getUserId());
-        for (Object role : roles) {
-            user.getAuthorities().add(new Authority((String) role));
-        }
+        List<String> roles = jdbcTemplate.queryForList(sqlAuthorities, String.class, user.getUserId());
+        List<Authority> authorityList = roles.stream().map(Authority::new).toList();
+        user.getAuthorities().addAll(authorityList);
+
+        // Fetch profile
+        Profile profile = getProfileByUserId(user.getUserId());
+        user.setProfile(profile);
 
         return user;
     }
 
-    private class UserRowMapper implements RowMapper {
+    private Profile getProfileByUserId(Long userId) {
+        String sql = "SELECT * FROM profiles WHERE user_id = ?";
+        SqlRowSet rs = jdbcTemplate.queryForRowSet(sql, userId);
+        if (rs.next()) {
+            Profile profile = new Profile();
+            profile.setProfileId(rs.getLong("profile_id"));
+            profile.setUser(new User(userId)); // Just setting user_id here, full User might need to be fetched separately
+            profile.setBio(rs.getString("bio"));
+            profile.setLocation(rs.getString("location"));
+            profile.setGenres(rs.getString("genres")); // Directly setting as a string
+            profile.setInstruments(rs.getString("instruments")); // Changed to single string
+            profile.setVenueName(rs.getString("venue_name"));
+            profile.setCapacity(rs.getInt("capacity"));
+            profile.setProfilePictureUrl(rs.getString("profile_picture_url"));
+            return profile;
+        }
+        return null;
+    }
+
+    private class UserRowMapper implements RowMapper<User> {
         @Override
-        public User mapRow(java.sql.ResultSet rs, int rowNum) throws java.sql.SQLException {
+        public User mapRow(@Nullable java.sql.ResultSet rs, int rowNum) throws java.sql.SQLException {
+            assert rs != null;
             return mapRowToUser((SqlRowSet) rs);
         }
     }
@@ -207,6 +242,66 @@ public class JdbcUserDao implements UserDao {
             throw new DaoException("Could not store the file. Error: " + e.getMessage(), e);
         } catch (CannotGetJdbcConnectionException e) {
             throw new DaoException("Unable to connect to server or database", e);
+        }
+    }
+
+    @Override
+    public void addInstrumentToUser(Long userId, String instrumentName) {
+        String getInstrumentsSql = "SELECT instruments FROM profiles WHERE user_id = ?";
+        String updateInstrumentsSql = "UPDATE profiles SET instruments = ? WHERE user_id = ?";
+
+        try {
+            String currentInstruments = jdbcTemplate.queryForObject(getInstrumentsSql, String.class, userId);
+            String newInstruments = currentInstruments != null
+                    ? currentInstruments + (currentInstruments.isEmpty() ? "" : ", ") + instrumentName
+                    : instrumentName;
+            jdbcTemplate.update(updateInstrumentsSql, newInstruments, userId);
+
+        } catch (CannotGetJdbcConnectionException e) {
+            throw new DaoException("Unable to connect to server or database", e);
+        } catch (Exception e) {
+            throw new DaoException("Failed to add instrument to user", e);
+        }
+    }
+
+    @Override
+    public void saveUserWithProfile(User user) {
+        if (user.getProfile() != null) {
+            Profile profile = user.getProfile();
+            String updateProfileSql = "UPDATE profiles SET bio = ?, location = ?, genres = ?, instruments = ?, venue_name = ?, capacity = ?, profile_picture_url = ? WHERE user_id = ?";
+
+            jdbcTemplate.update(updateProfileSql,
+                    profile.getBio(),
+                    profile.getLocation(),
+                    profile.getGenres(),
+                    profile.getInstruments(), // Now directly using the string
+                    profile.getVenueName(),
+                    profile.getCapacity(),
+                    profile.getProfilePictureUrl(),
+                    user.getUserId()
+            );
+        }
+    }
+
+    @Override
+    public void updateUserProfile(Long userId, Profile profile) {
+        String updateProfileSql = "UPDATE profiles SET bio = ?, location = ?, genres = ?, instruments = ?, venue_name = ?, capacity = ?, profile_picture_url = ? WHERE user_id = ?";
+
+        try {
+            jdbcTemplate.update(updateProfileSql,
+                    profile.getBio(),
+                    profile.getLocation(),
+                    profile.getGenres(), // Directly using the string
+                    profile.getInstruments(), // Directly using the string
+                    profile.getVenueName(),
+                    profile.getCapacity(),
+                    profile.getProfilePictureUrl(),
+                    userId
+            );
+        } catch (CannotGetJdbcConnectionException e) {
+            throw new DaoException("Unable to connect to server or database", e);
+        } catch (Exception e) {
+            throw new DaoException("Failed to update user profile", e);
         }
     }
 }

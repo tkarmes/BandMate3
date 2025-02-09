@@ -71,7 +71,7 @@ public class AuthenticationController {
     }
 
     @RequestMapping(path = "/register", method = RequestMethod.POST)
-    public ResponseEntity<User> register(@Valid @RequestBody RegisterUserDto newUser) {
+    public ResponseEntity<ProfileDto> register(@Valid @RequestBody RegisterUserDto newUser) {
         try {
             if (userDao.getUserByUsername(newUser.getUsername()) != null) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "User already exists.");
@@ -82,15 +82,8 @@ public class AuthenticationController {
 
             // Create the user and profile
             User createdUser = userDao.createUser(newUser);
-            Profile profile = new Profile();
-            profile.setUser(createdUser);
-            // Set any default profile data here, like bio, location, etc.
-            createdUser.setProfile(profile);
-
-            // Assuming userDao now handles profile creation too
-            userDao.saveUserWithProfile(createdUser); // You might need to add this method to UserDao
-
-            return ResponseEntity.status(HttpStatus.CREATED).body(createdUser);
+            Profile profile = createdUser.getProfile(); // Assuming profile is created in createUser method
+            return ResponseEntity.status(HttpStatus.CREATED).body(ProfileDto.fromEntity(profile));
         } catch (DaoException | UserCreationException e) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "User registration failed.");
         }
@@ -146,31 +139,31 @@ public class AuthenticationController {
     }
 
     @PostMapping("/users/{userId}/profile-picture")
-    public ResponseEntity<String> uploadProfilePicture(@PathVariable Long userId, @RequestParam("file") MultipartFile file, Principal principal) {
+    public ResponseEntity<ProfileDto> uploadProfilePicture(@PathVariable Long userId, @RequestParam("file") MultipartFile file, Principal principal) {
         if (file.isEmpty()) {
-            return new ResponseEntity<>("Please select a file to upload", HttpStatus.BAD_REQUEST);
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         }
 
         try {
             User user = userDao.getUserById(userId);
             if (user == null) {
-                return new ResponseEntity<>("User not found", HttpStatus.NOT_FOUND);
+                return new ResponseEntity<>(HttpStatus.NOT_FOUND);
             }
 
             if (!principal.getName().equals(user.getUsername())) {
-                return new ResponseEntity<>("You do not have permission to update this user's profile picture", HttpStatus.FORBIDDEN);
+                return new ResponseEntity<>(HttpStatus.FORBIDDEN);
             }
 
             String fileName = userDao.uploadProfilePicture(userId, file);
-
-            return new ResponseEntity<>("Profile picture uploaded successfully: " + fileName, HttpStatus.OK);
+            Profile updatedProfile = user.getProfile(); // Assuming profile is updated in the DAO method
+            return new ResponseEntity<>(ProfileDto.fromEntity(updatedProfile), HttpStatus.OK);
         } catch (DaoException e) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to upload profile picture");
         }
     }
 
     @PostMapping("/users/{userId}/instruments")
-    public ResponseEntity<User> addInstrumentToUser(
+    public ResponseEntity<ProfileDto> addInstrumentToUser(
             @PathVariable Long userId,
             @RequestBody String instrumentName,
             Principal principal) {
@@ -180,29 +173,13 @@ public class AuthenticationController {
                 return new ResponseEntity<>(HttpStatus.NOT_FOUND);
             }
 
-            // Check if the authenticated user is the same as the user being updated
             if (!principal.getName().equals(user.getUsername())) {
                 return new ResponseEntity<>(HttpStatus.FORBIDDEN);
             }
 
-            // Add the instrument to the user's profile
-            Profile profile = user.getProfile(); // Assuming profile is eagerly fetched or you fetch it if not
-            if (profile == null) {
-                profile = new Profile();
-                profile.setUser(user);
-                user.setProfile(profile);
-            }
-
-            String currentInstruments = profile.getInstruments() != null ? profile.getInstruments() : "";
-            String newInstruments = currentInstruments.isEmpty() ? instrumentName : currentInstruments + ", " + instrumentName;
-            profile.setInstruments(newInstruments);
-
-            // Assuming userDao now handles profile updates too
-            userDao.updateUserProfile(userId, profile);
-
-            // Refetch user to get updated data
-            User updatedUser = userDao.getUserById(userId);
-            return new ResponseEntity<>(updatedUser, HttpStatus.OK);
+            userDao.addInstrumentToUser(userId, instrumentName);
+            Profile updatedProfile = userDao.getProfileByUserId(userId); // Assuming this method exists in UserDao
+            return new ResponseEntity<>(ProfileDto.fromEntity(updatedProfile), HttpStatus.OK);
         } catch (DaoException e) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to add instrument to user");
         }

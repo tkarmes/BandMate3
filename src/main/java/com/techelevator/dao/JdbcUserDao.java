@@ -183,7 +183,7 @@ public class JdbcUserDao implements UserDao {
         return user;
     }
 
-    private Profile getProfileByUserId(Long userId) {
+    public Profile getProfileByUserId(Long userId) {
         String sql = "SELECT * FROM profiles WHERE user_id = ?";
         SqlRowSet rs = jdbcTemplate.queryForRowSet(sql, userId);
         if (rs.next()) {

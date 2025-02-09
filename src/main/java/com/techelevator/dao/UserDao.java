@@ -31,4 +31,6 @@ public interface UserDao {
     void saveUserWithProfile(User createdUser);
 
     void updateUserProfile(Long userId, Profile profile);
+
+    Profile getProfileByUserId(Long userId);
 }

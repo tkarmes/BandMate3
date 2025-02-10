@@ -34,7 +34,18 @@ public class UserDto {
         dto.setUserType(user.getUserType().toString());
         // Use the getName method from Authority class
         dto.setRoles(user.getAuthorities().stream().map(Authority::getName).toList());
+        dto.setProfilePictureUrl(null); // No profile entity, hence always null for now
         return dto;
+    }
+
+    // Add this helper method
+    protected static void fillCommonFields(UserDto dto, User user) {
+        dto.setUserId(user.getUserId());
+        dto.setUsername(user.getUsername());
+        dto.setEmail(user.getEmail());
+        dto.setUserType(user.getUserType().toString());
+        dto.setRoles(user.getAuthorities().stream().map(Authority::getName).toList());
+        dto.setProfilePictureUrl(null); // Since there's no profile entity
     }
 
     // Getters and Setters

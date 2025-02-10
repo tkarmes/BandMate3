@@ -1,11 +1,12 @@
 package com.techelevator.dto;
 
 import java.util.List;
+import com.techelevator.model.VenueProfile;
 
-public class VenueDto {
+public class VenueProfileDto {
 
     private Long venueProfileId;
-    private String name;
+    private String venueName;
     private String address;
     private String city;
     private String state;
@@ -18,31 +19,39 @@ public class VenueDto {
     private String websiteUrl;
     private String operatingHours;
     private List<String> amenities;
+    private String profilePictureUrl;
+    private String createdAt;
+    private String updatedAt;
 
-    public VenueDto() {}
+    public VenueProfileDto() {
+        // default constructor
+    }
 
-    public VenueDto(Long venueProfileId, String name, String address, String city, String state, String zipCode, Integer capacity, String venueType, List<String> genrePreferences, String phone, String email, String websiteUrl, String operatingHours, List<String> amenities) {
+    public VenueProfileDto(Long venueProfileId) {
+        // constructor with default blank values
         this.venueProfileId = venueProfileId;
-        this.name = name;
-        this.address = address;
-        this.city = city;
-        this.state = state;
-        this.zipCode = zipCode;
-        this.capacity = capacity;
-        this.venueType = venueType;
-        this.genrePreferences = genrePreferences;
-        this.phone = phone;
-        this.email = email;
-        this.websiteUrl = websiteUrl;
-        this.operatingHours = operatingHours;
-        this.amenities = amenities;
+        this.venueName = "";
+        this.address = "";
+        this.city = "";
+        this.state = "";
+        this.zipCode = "";
+        this.capacity = 0;
+        this.venueType = "";
+        this.genrePreferences = List.of();
+        this.phone = "";
+        this.email = "";
+        this.websiteUrl = "";
+        this.operatingHours = "";
+        this.amenities = List.of();
+        this.profilePictureUrl = null;
+        this.createdAt = null;
+        this.updatedAt = null;
     }
 
     // Static method to convert from entity to DTO
-    public static VenueDto fromEntity(com.techelevator.model.VenueProfile profile) {
-        VenueDto dto = new VenueDto();
-        dto.setVenueProfileId(profile.getVenueProfileId());
-        dto.setName(profile.getName());
+    public static VenueProfileDto fromEntity(VenueProfile profile) {
+        VenueProfileDto dto = new VenueProfileDto(profile.getVenueProfileId());
+        dto.setVenueName(profile.getName());
         dto.setAddress(profile.getAddress());
         dto.setCity(profile.getCity());
         dto.setState(profile.getState());
@@ -55,10 +64,13 @@ public class VenueDto {
         dto.setWebsiteUrl(profile.getWebsiteUrl());
         dto.setOperatingHours(profile.getOperatingHours());
         dto.setAmenities(profile.getAmenities());
+        dto.setProfilePictureUrl(profile.getProfilePictureUrl());
+        // Note: createdAt and updatedAt are set to null here as well, similar to MusicianProfileDto
         return dto;
     }
 
-    // Getters and Setters
+    // Getters and Setters...
+
     public Long getVenueProfileId() {
         return venueProfileId;
     }
@@ -67,12 +79,12 @@ public class VenueDto {
         this.venueProfileId = venueProfileId;
     }
 
-    public String getName() {
-        return name;
+    public String getVenueName() {
+        return venueName;
     }
 
-    public void setName(String name) {
-        this.name = name;
+    public void setVenueName(String venueName) {
+        this.venueName = venueName;
     }
 
     public String getAddress() {
@@ -169,5 +181,29 @@ public class VenueDto {
 
     public void setAmenities(List<String> amenities) {
         this.amenities = amenities;
+    }
+
+    public String getProfilePictureUrl() {
+        return profilePictureUrl;
+    }
+
+    public void setProfilePictureUrl(String profilePictureUrl) {
+        this.profilePictureUrl = profilePictureUrl;
+    }
+
+    public String getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(String createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public String getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(String updatedAt) {
+        this.updatedAt = updatedAt;
     }
 }

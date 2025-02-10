@@ -20,6 +20,8 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.techelevator.dao.UserDao;
+import com.techelevator.dao.MusicianProfileDao;
+import com.techelevator.dao.VenueProfileDao;
 import com.techelevator.security.jwt.JWTFilter;
 import com.techelevator.security.jwt.TokenProvider;
 
@@ -38,13 +40,17 @@ public class AuthenticationController {
     private final UserDao userDao;
     private final MessageDao messageDao;
     private final ConversationDao conversationDao;
+    private final MusicianProfileDao musicianProfileDao;
+    private final VenueProfileDao venueProfileDao;
 
-    public AuthenticationController(TokenProvider tokenProvider, AuthenticationManagerBuilder authenticationManagerBuilder, UserDao userDao, MessageDao messageDao, ConversationDao conversationDao) {
+    public AuthenticationController(TokenProvider tokenProvider, AuthenticationManagerBuilder authenticationManagerBuilder, UserDao userDao, MessageDao messageDao, ConversationDao conversationDao, MusicianProfileDao musicianProfileDao, VenueProfileDao venueProfileDao) {
         this.tokenProvider = tokenProvider;
         this.authenticationManagerBuilder = authenticationManagerBuilder;
         this.userDao = userDao;
         this.messageDao = messageDao;
         this.conversationDao = conversationDao;
+        this.musicianProfileDao = musicianProfileDao;
+        this.venueProfileDao = venueProfileDao;
     }
 
     @RequestMapping(path = "/login", method = RequestMethod.POST)
@@ -70,7 +76,7 @@ public class AuthenticationController {
     }
 
     @RequestMapping(path = "/register", method = RequestMethod.POST)
-    public ResponseEntity<UserDto> register(@Valid @RequestBody RegisterUserDto newUser) {
+    public ResponseEntity<?> register(@Valid @RequestBody RegisterUserDto newUser) {
         try {
             if (userDao.getUserByUsername(newUser.getUsername()) != null) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "User already exists.");
@@ -81,7 +87,18 @@ public class AuthenticationController {
 
             // Create the user
             User createdUser = userDao.createUser(newUser);
-            return ResponseEntity.status(HttpStatus.CREATED).body(UserDto.fromUser(createdUser));
+
+            // Create profile based on user type
+            if (createdUser.getUserType() == User.UserType.Musician) {
+                musicianProfileDao.createMusicianProfile(createdUser.getUserId());
+                return ResponseEntity.status(HttpStatus.CREATED).body(new MusicianProfileDto(null));
+            } else if (createdUser.getUserType() == User.UserType.VenueOwner) {
+                venueProfileDao.createVenueProfile(createdUser.getUserId());
+                return ResponseEntity.status(HttpStatus.CREATED).body(new VenueProfileDto(null));
+            } else {
+                // For admin or other types if needed
+                return ResponseEntity.status(HttpStatus.CREATED).body(UserDto.fromUser(createdUser));
+            }
         } catch (DaoException | UserCreationException e) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "User registration failed.");
         }
@@ -136,7 +153,7 @@ public class AuthenticationController {
     }
 
     @PostMapping("/users/{userId}/profile-picture")
-    public ResponseEntity<UserDto> uploadProfilePicture(@PathVariable Long userId, @RequestParam("file") MultipartFile file, Principal principal) {
+    public ResponseEntity<?> uploadProfilePicture(@PathVariable Long userId, @RequestParam("file") MultipartFile file, Principal principal) {
         if (file.isEmpty()) {
             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         }
@@ -153,7 +170,20 @@ public class AuthenticationController {
 
             String fileName = userDao.uploadProfilePicture(userId, file);
             User updatedUser = userDao.getUserById(userId); // Refresh user object to get updated profile info if needed
-            return ResponseEntity.ok(UserDto.fromUser(updatedUser));
+
+            if (user.getUserType() == User.UserType.Musician) {
+                MusicianProfile profile = musicianProfileDao.getMusicianProfileByUserId(userId);
+                profile.setProfilePictureUrl(fileName);
+                musicianProfileDao.updateMusicianProfile(userId, profile);
+                return ResponseEntity.ok(MusicianProfileDto.fromEntity(profile));
+            } else if (user.getUserType() == User.UserType.VenueOwner) {
+                VenueProfile profile = venueProfileDao.getVenueProfileByUserId(userId);
+                profile.setProfilePictureUrl(fileName);
+                venueProfileDao.updateVenueProfile(userId, profile);
+                return ResponseEntity.ok(VenueProfileDto.fromEntity(profile));
+            } else {
+                return ResponseEntity.ok(UserDto.fromUser(updatedUser));
+            }
         } catch (UserNotFoundException e) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
         }
@@ -178,7 +208,12 @@ public class AuthenticationController {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
             }
 
-            userDao.addInstrumentToMusician(userId, instrumentName);
+            MusicianProfile profile = musicianProfileDao.getMusicianProfileByUserId(userId);
+            String currentInstruments = profile.getInstruments();
+            String newInstruments = currentInstruments.isEmpty() ? instrumentName : currentInstruments + ", " + instrumentName;
+            profile.setInstruments(newInstruments);
+            musicianProfileDao.updateMusicianProfile(userId, profile);
+
             return ResponseEntity.ok().build();
         } catch (UserNotFoundException e) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");

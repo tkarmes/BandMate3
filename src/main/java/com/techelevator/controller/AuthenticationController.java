@@ -220,6 +220,37 @@ public class AuthenticationController {
         }
     }
 
+    @PostMapping("/users/{userId}/genres")
+    public ResponseEntity<Void> addGenreToMusicianProfile(
+            @PathVariable Long userId,
+            @RequestBody String genreName,
+            Principal principal) {
+        try {
+            User user = userDao.getUserById(userId);
+            if (user == null) {
+                return ResponseEntity.notFound().build();
+            }
+
+            if (!principal.getName().equals(user.getUsername())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+
+            if (user.getUserType() != User.UserType.Musician) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+            }
+
+            MusicianProfile profile = musicianProfileDao.getMusicianProfileByUserId(userId);
+            String currentGenres = profile.getGenres();
+            String newGenres = currentGenres.isEmpty() ? genreName : currentGenres + ", " + genreName;
+            profile.setGenres(newGenres);
+            musicianProfileDao.updateMusicianProfile(userId, profile);
+
+            return ResponseEntity.ok().build();
+        } catch (UserNotFoundException e) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
+        }
+    }
+
     // New endpoints for profile management
 
     @GetMapping("/users/{userId}/musician-profile")

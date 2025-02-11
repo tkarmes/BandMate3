@@ -30,17 +30,18 @@ public class JdbcMusicianProfileDao implements MusicianProfileDao {
     }
 
     @Override
-    public void createMusicianProfile(Long userId) throws DaoException {
-        String sql = "INSERT INTO musician_profiles (user_id) VALUES (?)";
-        int rowsAffected = jdbcTemplate.update(sql, userId);
-        if (rowsAffected == 0) {
+    public MusicianProfile createMusicianProfile(Long userId) throws DaoException {
+        String sql = "INSERT INTO musician_profiles (user_id) VALUES (?) RETURNING musician_profile_id";
+        Long profileId = jdbcTemplate.queryForObject(sql, Long.class, userId);
+        if (profileId == null) {
             throw new DaoException("Failed to create musician profile for user ID: " + userId);
         }
+        return getMusicianProfileByUserId(userId); // Fetch the newly created profile
     }
 
     @Override
     public void updateMusicianProfile(Long userId, MusicianProfile profile) throws DaoException {
-        String sql = "UPDATE musician_profiles SET bio = ?, location = ?, genres = ?, instruments = ?, profile_picture_url = ? WHERE user_id = ?";
+        String sql = "UPDATE musician_profiles SET bio = ?, location = ?, genres = ?, instruments = ?, profile_picture_url = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?";
         int rowsAffected = jdbcTemplate.update(sql,
                 profile.getBio(),
                 profile.getLocation(),
@@ -49,6 +50,33 @@ public class JdbcMusicianProfileDao implements MusicianProfileDao {
                 profile.getProfilePictureUrl(),
                 userId
         );
+        if (rowsAffected == 0) {
+            throw new DaoException("No profile updated for user ID: " + userId);
+        }
+    }
+
+    @Override
+    public void deleteMusicianProfile(Long userId) throws DaoException {
+        String sql = "DELETE FROM musician_profiles WHERE user_id = ?";
+        int rowsAffected = jdbcTemplate.update(sql, userId);
+        if (rowsAffected == 0) {
+            throw new DaoException("No profile found to delete for user ID: " + userId);
+        }
+    }
+
+    @Override
+    public void updateMusicianProfileBio(Long userId, String bio) throws DaoException {
+        String sql = "UPDATE musician_profiles SET bio = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?";
+        int rowsAffected = jdbcTemplate.update(sql, bio, userId);
+        if (rowsAffected == 0) {
+            throw new DaoException("No profile updated for user ID: " + userId);
+        }
+    }
+
+    @Override
+    public void updateMusicianProfileInstruments(Long userId, String instruments) throws DaoException {
+        String sql = "UPDATE musician_profiles SET instruments = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?";
+        int rowsAffected = jdbcTemplate.update(sql, instruments, userId);
         if (rowsAffected == 0) {
             throw new DaoException("No profile updated for user ID: " + userId);
         }

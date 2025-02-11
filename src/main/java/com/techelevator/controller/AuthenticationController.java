@@ -219,4 +219,106 @@ public class AuthenticationController {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
         }
     }
+
+    // New endpoints for profile management
+
+    @GetMapping("/users/{userId}/musician-profile")
+    public ResponseEntity<MusicianProfileDto> getMusicianProfile(@PathVariable Long userId, Principal principal) {
+        try {
+            User user = userDao.getUserById(userId);
+            if (user == null || user.getUserType() != User.UserType.Musician) {
+                return ResponseEntity.notFound().build();
+            }
+
+            if (!principal.getName().equals(user.getUsername())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+
+            MusicianProfile profile = musicianProfileDao.getMusicianProfileByUserId(userId);
+            return ResponseEntity.ok(MusicianProfileDto.fromEntity(profile));
+        } catch (UserNotFoundException e) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User or profile not found");
+        }
+    }
+
+    @PutMapping("/users/{userId}/musician-profile")
+    public ResponseEntity<Void> updateMusicianProfile(@PathVariable Long userId, @RequestBody MusicianProfileDto profileDto, Principal principal) {
+        try {
+            User user = userDao.getUserById(userId);
+            if (user == null || user.getUserType() != User.UserType.Musician) {
+                return ResponseEntity.notFound().build();
+            }
+
+            if (!principal.getName().equals(user.getUsername())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+
+            MusicianProfile profile = musicianProfileDao.getMusicianProfileByUserId(userId);
+            profile.setBio(profileDto.getBio());
+            profile.setLocation(profileDto.getLocation());
+            profile.setGenres(profileDto.getGenres());
+            profile.setInstruments(profileDto.getInstruments());
+            profile.setProfilePictureUrl(profileDto.getProfilePictureUrl());
+            musicianProfileDao.updateMusicianProfile(userId, profile);
+
+            return ResponseEntity.ok().build();
+        } catch (UserNotFoundException e) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User or profile not found");
+        }
+    }
+
+    @GetMapping("/users/{userId}/venue-profile")
+    public ResponseEntity<VenueProfileDto> getVenueProfile(@PathVariable Long userId, Principal principal) {
+        try {
+            User user = userDao.getUserById(userId);
+            if (user == null || user.getUserType() != User.UserType.VenueOwner) {
+                return ResponseEntity.notFound().build();
+            }
+
+            if (!principal.getName().equals(user.getUsername())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+
+            VenueProfile profile = venueProfileDao.getVenueProfileByUserId(userId);
+            return ResponseEntity.ok(VenueProfileDto.fromEntity(profile));
+        } catch (UserNotFoundException e) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User or profile not found");
+        }
+    }
+
+    @PutMapping("/users/{userId}/venue-profile")
+    public ResponseEntity<Void> updateVenueProfile(@PathVariable Long userId, @RequestBody VenueProfileDto profileDto, Principal principal) {
+        try {
+            User user = userDao.getUserById(userId);
+            if (user == null || user.getUserType() != User.UserType.VenueOwner) {
+                return ResponseEntity.notFound().build();
+            }
+
+            if (!principal.getName().equals(user.getUsername())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+
+            VenueProfile profile = new VenueProfile();
+            profile.setVenueProfileId(userId); // Assuming this is the profile ID
+            profile.setName(profileDto.getVenueName());
+            profile.setAddress(profileDto.getAddress());
+            profile.setCity(profileDto.getCity());
+            profile.setState(profileDto.getState());
+            profile.setZipCode(profileDto.getZipCode());
+            profile.setCapacity(profileDto.getCapacity());
+            profile.setVenueType(profileDto.getVenueType());
+            profile.setGenrePreferences(profileDto.getGenrePreferences());
+            profile.setPhone(profileDto.getPhone());
+            profile.setEmail(profileDto.getEmail());
+            profile.setWebsiteUrl(profileDto.getWebsiteUrl());
+            profile.setOperatingHours(profileDto.getOperatingHours());
+            profile.setAmenities(profileDto.getAmenities());
+            profile.setProfilePictureUrl(profileDto.getProfilePictureUrl());
+            venueProfileDao.updateVenueProfile(userId, profile);
+
+            return ResponseEntity.ok().build();
+        } catch (UserNotFoundException e) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User or profile not found");
+        }
+    }
 }

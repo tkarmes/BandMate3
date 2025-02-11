@@ -7,7 +7,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.rowset.SqlRowSet;
 import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @Component
@@ -31,12 +30,13 @@ public class JdbcVenueProfileDao implements VenueProfileDao {
     }
 
     @Override
-    public void createVenueProfile(Long userId) throws DaoException {
-        String sql = "INSERT INTO venue_profiles (user_id) VALUES (?)";
-        int rowsAffected = jdbcTemplate.update(sql, userId);
-        if (rowsAffected == 0) {
+    public VenueProfile createVenueProfile(Long userId) throws DaoException {
+        String sql = "INSERT INTO venue_profiles (user_id) VALUES (?) RETURNING venue_profile_id";
+        Long profileId = jdbcTemplate.queryForObject(sql, Long.class, userId);
+        if (profileId == null) {
             throw new DaoException("Failed to create venue profile for user ID: " + userId);
         }
+        return getVenueProfileByUserId(userId); // Fetch the newly created profile
     }
 
     @Override
@@ -53,7 +53,8 @@ public class JdbcVenueProfileDao implements VenueProfileDao {
                 "email = ?, " +
                 "website_url = ?, " +
                 "operating_hours = ?, " +
-                "profile_picture_url = ? " +
+                "profile_picture_url = ?, " +
+                "updated_at = CURRENT_TIMESTAMP " +
                 "WHERE user_id = ?";
         int rowsAffected = jdbcTemplate.update(sql,
                 profile.getName(),
@@ -75,11 +76,50 @@ public class JdbcVenueProfileDao implements VenueProfileDao {
         }
 
         // Handle genre preferences and amenities
-        updateGenrePreferences(profile.getVenueProfileId(), profile.getGenrePreferences());
-        updateAmenities(profile.getVenueProfileId(), profile.getAmenities());
+        updateGenrePreferencesForProfile(profile.getVenueProfileId(), profile.getGenrePreferences());
+        updateAmenitiesForProfile(profile.getVenueProfileId(), profile.getAmenities());
     }
 
-    private void updateGenrePreferences(Long venueProfileId, List<String> genrePreferences) {
+    @Override
+    public void deleteVenueProfile(Long userId) throws DaoException {
+        String sql = "DELETE FROM venue_profiles WHERE user_id = ?";
+        int rowsAffected = jdbcTemplate.update(sql, userId);
+        if (rowsAffected == 0) {
+            throw new DaoException("No profile found to delete for user ID: " + userId);
+        }
+    }
+
+    @Override
+    public void updateVenueName(Long userId, String venueName) throws DaoException {
+        String sql = "UPDATE venue_profiles SET name = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?";
+        int rowsAffected = jdbcTemplate.update(sql, venueName, userId);
+        if (rowsAffected == 0) {
+            throw new DaoException("No profile updated for user ID: " + userId);
+        }
+    }
+
+    @Override
+    public void updateAddress(Long userId, String address) throws DaoException {
+        String sql = "UPDATE venue_profiles SET address = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?";
+        int rowsAffected = jdbcTemplate.update(sql, address, userId);
+        if (rowsAffected == 0) {
+            throw new DaoException("No profile updated for user ID: " + userId);
+        }
+    }
+
+    @Override
+    public void updateGenrePreferences(Long userId, List<String> genrePreferences) throws DaoException {
+        VenueProfile profile = getVenueProfileByUserId(userId);
+        updateGenrePreferencesForProfile(profile.getVenueProfileId(), genrePreferences);
+    }
+
+    @Override
+    public void updateAmenities(Long userId, List<String> amenities) throws DaoException {
+        VenueProfile profile = getVenueProfileByUserId(userId);
+        updateAmenitiesForProfile(profile.getVenueProfileId(), amenities);
+    }
+
+    private void updateGenrePreferencesForProfile(Long venueProfileId, List<String> genrePreferences) {
         String deleteSql = "DELETE FROM venue_genre_preferences WHERE venue_profile_id = ?";
         jdbcTemplate.update(deleteSql, venueProfileId);
 
@@ -89,7 +129,7 @@ public class JdbcVenueProfileDao implements VenueProfileDao {
         }
     }
 
-    private void updateAmenities(Long venueProfileId, List<String> amenities) {
+    private void updateAmenitiesForProfile(Long venueProfileId, List<String> amenities) {
         String deleteSql = "DELETE FROM venue_amenities WHERE venue_profile_id = ?";
         jdbcTemplate.update(deleteSql, venueProfileId);
 

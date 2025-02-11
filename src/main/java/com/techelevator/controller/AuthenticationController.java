@@ -223,7 +223,7 @@ public class AuthenticationController {
     @PostMapping("/users/{userId}/genres")
     public ResponseEntity<Void> addGenreToMusicianProfile(
             @PathVariable Long userId,
-            @RequestBody String genreName,
+            @RequestBody GenreDto genreDto,  // Change here to use a DTO
             Principal principal) {
         try {
             User user = userDao.getUserById(userId);
@@ -241,7 +241,7 @@ public class AuthenticationController {
 
             MusicianProfile profile = musicianProfileDao.getMusicianProfileByUserId(userId);
             String currentGenres = profile.getGenres();
-            String newGenres = currentGenres.isEmpty() ? genreName : currentGenres + ", " + genreName;
+            String newGenres = (currentGenres == null || currentGenres.isEmpty()) ? genreDto.getGenreName() : currentGenres + ", " + genreDto.getGenreName();
             profile.setGenres(newGenres);
             musicianProfileDao.updateMusicianProfile(userId, profile);
 
@@ -250,7 +250,6 @@ public class AuthenticationController {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
         }
     }
-
     // New endpoints for profile management
 
     @GetMapping("/users/{userId}/musician-profile")

@@ -27,9 +27,11 @@ import java.util.UUID;
 public class JdbcUserDao implements UserDao {
 
     private final JdbcTemplate jdbcTemplate;
+    private final MusicianProfileDao musicianProfileDao;
 
-    public JdbcUserDao(JdbcTemplate jdbcTemplate) {
+    public JdbcUserDao(JdbcTemplate jdbcTemplate, MusicianProfileDao musicianProfileDao) {
         this.jdbcTemplate = jdbcTemplate;
+        this.musicianProfileDao = musicianProfileDao;
     }
 
     @Override
@@ -185,6 +187,10 @@ public class JdbcUserDao implements UserDao {
             throw new UserNotFoundException("User not found with ID: " + userId);
         }
 
+        if (user.getUserType() != User.UserType.Musician) {
+            throw new UnsupportedOperationException("Profile pictures can only be uploaded for musicians");
+        }
+
         try {
             // Generate a unique filename
             String fileName = UUID.randomUUID().toString() + "_" + file.getOriginalFilename();
@@ -199,10 +205,12 @@ public class JdbcUserDao implements UserDao {
             // Write the file to the specified path
             Files.write(path, file.getBytes());
 
-            // Since profiles are removed, we'll need to handle profile pictures differently, possibly storing in user table
-            // For now, we'll assume this is not implemented
-            throw new UnsupportedOperationException("Profile picture upload not supported without profile entities");
+            // Update the musician's profile picture URL in the database through MusicianProfileDao
+            MusicianProfile profile = musicianProfileDao.getMusicianProfileByUserId(userId);
+            profile.setProfilePictureUrl(fileName);
+            musicianProfileDao.updateMusicianProfile(userId, profile);
 
+            return fileName; // Return the filename here
         } catch (IOException e) {
             throw new DaoException("Could not store the file. Error: " + e.getMessage(), e);
         } catch (CannotGetJdbcConnectionException e) {

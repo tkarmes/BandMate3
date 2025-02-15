@@ -93,7 +93,11 @@ public class AuthenticationController {
                 musicianProfileDao.createMusicianProfile(createdUser.getUserId());
                 return ResponseEntity.status(HttpStatus.CREATED).body(new MusicianProfileDto(null));
             } else if (createdUser.getUserType() == User.UserType.VenueOwner) {
-                venueProfileDao.createVenueProfile(createdUser.getUserId());
+                // Check if venue name is provided
+                if (newUser.getVenueName() == null || newUser.getVenueName().isEmpty()) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Venue name is required for venue owners.");
+                }
+                venueProfileDao.createVenueProfile(createdUser.getUserId(), newUser.getVenueName()); // Here we pass the venueName
                 return ResponseEntity.status(HttpStatus.CREATED).body(new VenueProfileDto(null));
             } else {
                 // For admin or other types if needed

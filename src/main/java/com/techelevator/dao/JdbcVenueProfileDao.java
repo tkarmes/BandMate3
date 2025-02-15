@@ -30,9 +30,9 @@ public class JdbcVenueProfileDao implements VenueProfileDao {
     }
 
     @Override
-    public VenueProfile createVenueProfile(Long userId) throws DaoException {
-        String sql = "INSERT INTO venue_profiles (user_id) VALUES (?) RETURNING venue_profile_id";
-        Long profileId = jdbcTemplate.queryForObject(sql, Long.class, userId);
+    public VenueProfile createVenueProfile(Long userId, String venueName) throws DaoException {
+        String sql = "INSERT INTO venue_profiles (user_id, name) VALUES (?, ?) RETURNING venue_profile_id";
+        Long profileId = jdbcTemplate.queryForObject(sql, Long.class, userId, venueName);
         if (profileId == null) {
             throw new DaoException("Failed to create venue profile for user ID: " + userId);
         }

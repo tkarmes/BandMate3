@@ -33,6 +33,9 @@ public class RegisterUserDto {
     @NotEmpty(message = "Email cannot be empty.")
     private String email;
 
+    // Venue name is required only for venue owners, but this validation can't be done here due to its conditional nature
+    private String venueName;
+
     public String getUsername() {
         return username;
     }
@@ -79,5 +82,13 @@ public class RegisterUserDto {
 
     public void setEmail(String email) {
         this.email = email;
+    }
+
+    public String getVenueName() {
+        return venueName;
+    }
+
+    public void setVenueName(String venueName) {
+        this.venueName = venueName;
     }
 }

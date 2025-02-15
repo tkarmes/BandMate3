@@ -16,12 +16,13 @@ public interface VenueProfileDao {
     VenueProfile getVenueProfileByUserId(Long userId) throws DaoException;
 
     /**
-     * Creates a new venue profile for the given user ID and returns the profile.
+     * Creates a new venue profile for the given user ID with the specified venue name and returns the profile.
      * @param userId The ID of the user for whom the profile is being created.
+     * @param venueName The name of the venue to be set for the new profile.
      * @return The newly created VenueProfile object.
      * @throws DaoException if there's an error creating the profile in the database.
      */
-    VenueProfile createVenueProfile(Long userId) throws DaoException;
+    VenueProfile createVenueProfile(Long userId, String venueName) throws DaoException;
 
     /**
      * Updates the venue profile for the given user ID.

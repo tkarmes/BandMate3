@@ -90,8 +90,8 @@ public class AuthenticationController {
 
             // Create profile based on user type
             if (createdUser.getUserType() == User.UserType.Musician) {
-                musicianProfileDao.createMusicianProfile(createdUser.getUserId());
-                return ResponseEntity.status(HttpStatus.CREATED).body(new MusicianProfileDto(null));
+                MusicianProfile createdProfile = musicianProfileDao.createMusicianProfile(createdUser.getUserId());
+                return ResponseEntity.status(HttpStatus.CREATED).body(MusicianProfileDto.fromEntity(createdProfile));
             } else if (createdUser.getUserType() == User.UserType.VenueOwner) {
                 if (newUser.getVenueName() == null || newUser.getVenueName().isEmpty()) {
                     throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Venue name is required for venue owners.");

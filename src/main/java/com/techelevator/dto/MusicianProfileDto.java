@@ -14,35 +14,45 @@ public class MusicianProfileDto {
     private String updatedAt;
 
     public MusicianProfileDto() {
-        // default constructor
+        // Initialize with default empty strings instead of nulls
+        this.bio = "";
+        this.location = "";
+        this.genres = "";
+        this.instruments = "";
+        this.profilePictureUrl = "";
+        this.createdAt = "";
+        this.updatedAt = "";
     }
 
     public MusicianProfileDto(Long musicianProfileId) {
-        // constructor with default blank values
         this.musicianProfileId = musicianProfileId;
         this.bio = "";
         this.location = "";
         this.genres = "";
         this.instruments = "";
-        this.profilePictureUrl = null;
-        this.createdAt = null;
-        this.updatedAt = null;
+        this.profilePictureUrl = "";
+        this.createdAt = "";
+        this.updatedAt = "";
     }
 
     // Static method to convert from entity to DTO
     public static MusicianProfileDto fromEntity(MusicianProfile profile) {
+        if (profile == null) {
+            return new MusicianProfileDto(); // Return DTO with default empty values
+        }
+
         MusicianProfileDto dto = new MusicianProfileDto(profile.getMusicianProfileId());
-        dto.setBio(profile.getBio());
-        dto.setLocation(profile.getLocation());
-        dto.setGenres(profile.getGenres());
-        dto.setInstruments(profile.getInstruments());
-        dto.setProfilePictureUrl(profile.getProfilePictureUrl());
-        // Note: createdAt and updatedAt are set to null here since we're assuming they're String in the DTO and might not be set or formatted the same way as in the entity
+        dto.setBio(profile.getBio() != null ? profile.getBio() : "");
+        dto.setLocation(profile.getLocation() != null ? profile.getLocation() : "");
+        dto.setGenres(profile.getGenres() != null ? profile.getGenres() : "");
+        dto.setInstruments(profile.getInstruments() != null ? profile.getInstruments() : "");
+        dto.setProfilePictureUrl(profile.getProfilePictureUrl() != null ? profile.getProfilePictureUrl() : "");
+        dto.setCreatedAt(profile.getCreatedAt() != null ? profile.getCreatedAt().toString() : "");
+        dto.setUpdatedAt(profile.getUpdatedAt() != null ? profile.getUpdatedAt().toString() : "");
         return dto;
     }
 
-// Getters and Setters...
-
+    // Getters and Setters...
     public Long getMusicianProfileId() {
         return musicianProfileId;
     }

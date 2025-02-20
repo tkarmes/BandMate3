@@ -4,10 +4,16 @@ import com.techelevator.exception.DaoException;
 import com.techelevator.model.User;
 import com.techelevator.model.VenueProfile;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.support.rowset.SqlRowSet;
+import org.springframework.jdbc.core.PreparedStatementSetter;
+import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Component;
 
+import java.sql.Array;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.Arrays;
 import java.util.List;
+import java.util.ArrayList;
 
 @Component
 public class JdbcVenueProfileDao implements VenueProfileDao {
@@ -21,9 +27,9 @@ public class JdbcVenueProfileDao implements VenueProfileDao {
     @Override
     public VenueProfile getVenueProfileByUserId(Long userId) throws DaoException {
         String sql = "SELECT * FROM venue_profiles WHERE user_id = ?";
-        SqlRowSet results = jdbcTemplate.queryForRowSet(sql, userId);
-        if (results.next()) {
-            return mapRowToVenueProfile(results);
+        List<VenueProfile> results = jdbcTemplate.query(sql, new VenueProfileRowMapper(), userId);
+        if (!results.isEmpty()) {
+            return results.get(0);
         } else {
             throw new DaoException("Venue profile not found for user ID: " + userId);
         }
@@ -54,30 +60,33 @@ public class JdbcVenueProfileDao implements VenueProfileDao {
                 "website_url = ?, " +
                 "operating_hours = ?, " +
                 "profile_picture_url = ?, " +
+                "genre_preferences = ?, " +
+                "amenities = ?, " +
                 "updated_at = CURRENT_TIMESTAMP " +
                 "WHERE user_id = ?";
-        int rowsAffected = jdbcTemplate.update(sql,
-                profile.getName(),
-                profile.getAddress(),
-                profile.getCity(),
-                profile.getState(),
-                profile.getZipCode(),
-                profile.getCapacity(),
-                profile.getVenueType(),
-                profile.getPhone(),
-                profile.getEmail(),
-                profile.getWebsiteUrl(),
-                profile.getOperatingHours(),
-                profile.getProfilePictureUrl(),
-                userId
-        );
+        int rowsAffected = jdbcTemplate.update(sql, new PreparedStatementSetter() {
+            @Override
+            public void setValues(java.sql.PreparedStatement ps) throws SQLException {
+                ps.setString(1, profile.getName());
+                ps.setString(2, profile.getAddress());
+                ps.setString(3, profile.getCity());
+                ps.setString(4, profile.getState());
+                ps.setString(5, profile.getZipCode());
+                ps.setInt(6, profile.getCapacity());
+                ps.setString(7, profile.getVenueType());
+                ps.setString(8, profile.getPhone());
+                ps.setString(9, profile.getEmail());
+                ps.setString(10, profile.getWebsiteUrl());
+                ps.setString(11, profile.getOperatingHours());
+                ps.setString(12, profile.getProfilePictureUrl());
+                ps.setArray(13, profile.getGenrePreferences() != null ? ps.getConnection().createArrayOf("text", profile.getGenrePreferences().toArray()) : null);
+                ps.setArray(14, profile.getAmenities() != null ? ps.getConnection().createArrayOf("text", profile.getAmenities().toArray()) : null);
+                ps.setLong(15, userId);
+            }
+        });
         if (rowsAffected == 0) {
             throw new DaoException("No profile updated for user ID: " + userId);
         }
-
-        // Handle genre preferences and amenities
-        updateGenrePreferencesForProfile(profile.getVenueProfileId(), profile.getGenrePreferences());
-        updateAmenitiesForProfile(profile.getVenueProfileId(), profile.getAmenities());
     }
 
     @Override
@@ -109,71 +118,66 @@ public class JdbcVenueProfileDao implements VenueProfileDao {
 
     @Override
     public void updateGenrePreferences(Long userId, List<String> genrePreferences) throws DaoException {
-        VenueProfile profile = getVenueProfileByUserId(userId);
-        updateGenrePreferencesForProfile(profile.getVenueProfileId(), genrePreferences);
+        String sql = "UPDATE venue_profiles SET genre_preferences = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?";
+        int rowsAffected = jdbcTemplate.update(sql, new PreparedStatementSetter() {
+            @Override
+            public void setValues(java.sql.PreparedStatement ps) throws SQLException {
+                ps.setArray(1, genrePreferences != null ? ps.getConnection().createArrayOf("text", genrePreferences.toArray()) : null);
+                ps.setLong(2, userId);
+            }
+        });
+        if (rowsAffected == 0) {
+            throw new DaoException("No profile updated for user ID: " + userId);
+        }
     }
 
     @Override
     public void updateAmenities(Long userId, List<String> amenities) throws DaoException {
-        VenueProfile profile = getVenueProfileByUserId(userId);
-        updateAmenitiesForProfile(profile.getVenueProfileId(), amenities);
-    }
-
-    private void updateGenrePreferencesForProfile(Long venueProfileId, List<String> genrePreferences) {
-        String deleteSql = "DELETE FROM venue_genre_preferences WHERE venue_profile_id = ?";
-        jdbcTemplate.update(deleteSql, venueProfileId);
-
-        String insertSql = "INSERT INTO venue_genre_preferences (venue_profile_id, genre_preference) VALUES (?, ?)";
-        for (String genre : genrePreferences) {
-            jdbcTemplate.update(insertSql, venueProfileId, genre);
+        String sql = "UPDATE venue_profiles SET amenities = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?";
+        int rowsAffected = jdbcTemplate.update(sql, new PreparedStatementSetter() {
+            @Override
+            public void setValues(java.sql.PreparedStatement ps) throws SQLException {
+                ps.setArray(1, amenities != null ? ps.getConnection().createArrayOf("text", amenities.toArray()) : null);
+                ps.setLong(2, userId);
+            }
+        });
+        if (rowsAffected == 0) {
+            throw new DaoException("No profile updated for user ID: " + userId);
         }
     }
 
-    private void updateAmenitiesForProfile(Long venueProfileId, List<String> amenities) {
-        String deleteSql = "DELETE FROM venue_amenities WHERE venue_profile_id = ?";
-        jdbcTemplate.update(deleteSql, venueProfileId);
+    private class VenueProfileRowMapper implements RowMapper<VenueProfile> {
+        @Override
+        public VenueProfile mapRow(ResultSet rs, int rowNum) throws SQLException {
+            VenueProfile profile = new VenueProfile();
+            profile.setVenueProfileId(rs.getLong("venue_profile_id"));
+            profile.setUser(new User(rs.getLong("user_id")));
+            profile.setName(rs.getString("name"));
+            profile.setAddress(rs.getString("address"));
+            profile.setCity(rs.getString("city"));
+            profile.setState(rs.getString("state"));
+            profile.setZipCode(rs.getString("zip_code"));
+            profile.setCapacity(rs.getInt("capacity"));
+            profile.setVenueType(rs.getString("venue_type"));
+            profile.setPhone(rs.getString("phone"));
+            profile.setEmail(rs.getString("email"));
+            profile.setWebsiteUrl(rs.getString("website_url"));
+            profile.setOperatingHours(rs.getString("operating_hours"));
+            profile.setProfilePictureUrl(rs.getString("profile_picture_url"));
+            profile.setCreatedAt(rs.getString("created_at"));
+            profile.setUpdatedAt(rs.getString("updated_at"));
 
-        String insertSql = "INSERT INTO venue_amenities (venue_profile_id, amenity) VALUES (?, ?)";
-        for (String amenity : amenities) {
-            jdbcTemplate.update(insertSql, venueProfileId, amenity);
+            // Fetch genre preferences directly from the array column
+            Array genreArray = rs.getArray("genre_preferences");
+            List<String> genrePreferences = (genreArray != null) ? Arrays.asList((String[]) genreArray.getArray()) : new ArrayList<>();
+            profile.setGenrePreferences(genrePreferences);
+
+            // Fetch amenities directly from the array column
+            Array amenitiesArray = rs.getArray("amenities");
+            List<String> amenities = (amenitiesArray != null) ? Arrays.asList((String[]) amenitiesArray.getArray()) : new ArrayList<>();
+            profile.setAmenities(amenities);
+
+            return profile;
         }
-    }
-
-    private VenueProfile mapRowToVenueProfile(SqlRowSet rs) {
-        VenueProfile profile = new VenueProfile();
-        profile.setVenueProfileId(rs.getLong("venue_profile_id"));
-        profile.setUser(new User(rs.getLong("user_id"))); // Assuming User has a constructor with userId
-        profile.setName(rs.getString("name"));
-        profile.setAddress(rs.getString("address"));
-        profile.setCity(rs.getString("city"));
-        profile.setState(rs.getString("state"));
-        profile.setZipCode(rs.getString("zip_code"));
-        profile.setCapacity(rs.getInt("capacity"));
-        profile.setVenueType(rs.getString("venue_type"));
-        profile.setPhone(rs.getString("phone"));
-        profile.setEmail(rs.getString("email"));
-        profile.setWebsiteUrl(rs.getString("website_url"));
-        profile.setOperatingHours(rs.getString("operating_hours"));
-        profile.setProfilePictureUrl(rs.getString("profile_picture_url"));
-        profile.setCreatedAt(rs.getString("created_at"));
-        profile.setUpdatedAt(rs.getString("updated_at"));
-
-        // Fetch genre preferences
-        profile.setGenrePreferences(fetchGenrePreferences(profile.getVenueProfileId()));
-
-        // Fetch amenities
-        profile.setAmenities(fetchAmenities(profile.getVenueProfileId()));
-
-        return profile;
-    }
-
-    private List<String> fetchGenrePreferences(Long venueProfileId) {
-        String sql = "SELECT genre_preference FROM venue_genre_preferences WHERE venue_profile_id = ?";
-        return jdbcTemplate.queryForList(sql, String.class, venueProfileId);
-    }
-
-    private List<String> fetchAmenities(Long venueProfileId) {
-        String sql = "SELECT amenity FROM venue_amenities WHERE venue_profile_id = ?";
-        return jdbcTemplate.queryForList(sql, String.class, venueProfileId);
     }
 }

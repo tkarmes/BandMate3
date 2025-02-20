@@ -2,8 +2,8 @@ package com.techelevator.dao;
 
 import com.techelevator.exception.DaoException;
 import com.techelevator.exception.UserCreationException;
-import com.techelevator.exception.UserNotFoundException;
 import com.techelevator.exception.UserDeletionException;
+import com.techelevator.exception.UserNotFoundException;
 import com.techelevator.dto.RegisterUserDto;
 import com.techelevator.model.*;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -28,10 +28,12 @@ public class JdbcUserDao implements UserDao {
 
     private final JdbcTemplate jdbcTemplate;
     private final MusicianProfileDao musicianProfileDao;
+    private final VenueProfileDao venueProfileDao; // Include VenueProfileDao if not already added
 
-    public JdbcUserDao(JdbcTemplate jdbcTemplate, MusicianProfileDao musicianProfileDao) {
+    public JdbcUserDao(JdbcTemplate jdbcTemplate, MusicianProfileDao musicianProfileDao, VenueProfileDao venueProfileDao) {
         this.jdbcTemplate = jdbcTemplate;
         this.musicianProfileDao = musicianProfileDao;
+        this.venueProfileDao = venueProfileDao;
     }
 
     @Override
@@ -187,10 +189,6 @@ public class JdbcUserDao implements UserDao {
             throw new UserNotFoundException("User not found with ID: " + userId);
         }
 
-        if (user.getUserType() != User.UserType.Musician) {
-            throw new UnsupportedOperationException("Profile pictures can only be uploaded for musicians");
-        }
-
         try {
             // Generate a unique filename
             String fileName = UUID.randomUUID().toString() + "_" + file.getOriginalFilename();
@@ -205,10 +203,19 @@ public class JdbcUserDao implements UserDao {
             // Write the file to the specified path
             Files.write(path, file.getBytes());
 
-            // Update the musician's profile picture URL in the database through MusicianProfileDao
-            MusicianProfile profile = musicianProfileDao.getMusicianProfileByUserId(userId);
-            profile.setProfilePictureUrl(fileName);
-            musicianProfileDao.updateMusicianProfile(userId, profile);
+            // Update profile picture URL based on user type
+            if (user.getUserType() == User.UserType.Musician) {
+                MusicianProfile profile = musicianProfileDao.getMusicianProfileByUserId(userId);
+                profile.setProfilePictureUrl(fileName);
+                musicianProfileDao.updateMusicianProfile(userId, profile);
+            } else if (user.getUserType() == User.UserType.VenueOwner) {
+                VenueProfile profile = venueProfileDao.getVenueProfileByUserId(userId);
+                profile.setProfilePictureUrl(fileName);
+                venueProfileDao.updateVenueProfile(userId, profile);
+            } else {
+                // This else block is for users like admins who might not have profiles for pictures
+                throw new UnsupportedOperationException("Profile picture upload not supported for this user type");
+            }
 
             return fileName; // Return the filename here
         } catch (IOException e) {

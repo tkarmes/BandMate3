@@ -65,7 +65,8 @@ public class VenueProfileDto {
         dto.setOperatingHours(profile.getOperatingHours());
         dto.setAmenities(profile.getAmenities());
         dto.setProfilePictureUrl(profile.getProfilePictureUrl());
-        // Note: createdAt and updatedAt are set to null here as well, similar to MusicianProfileDto
+        dto.setCreatedAt(profile.getCreatedAt());
+        dto.setUpdatedAt(profile.getUpdatedAt());
         return dto;
     }
 

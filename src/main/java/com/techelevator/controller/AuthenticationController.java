@@ -8,8 +8,12 @@ import com.techelevator.exception.UserNotFoundException;
 import com.techelevator.exception.UserDeletionException;
 import com.techelevator.exception.UserCreationException;
 import com.techelevator.model.*;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.Resource; // Correct Resource import
+import org.springframework.core.io.UrlResource; // Correct UrlResource import
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
@@ -28,6 +32,8 @@ import com.techelevator.security.jwt.TokenProvider;
 import com.techelevator.dao.MessageDao;
 import com.techelevator.dao.ConversationDao;
 
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.security.Principal;
 import java.util.List;
 
@@ -55,7 +61,6 @@ public class AuthenticationController {
 
     @RequestMapping(path = "/login", method = RequestMethod.POST)
     public ResponseEntity<LoginResponseDto> login(@Valid @RequestBody LoginDto loginDto) {
-
         UsernamePasswordAuthenticationToken authenticationToken =
                 new UsernamePasswordAuthenticationToken(loginDto.getUsername(), loginDto.getPassword());
 
@@ -85,10 +90,8 @@ public class AuthenticationController {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Passwords do not match.");
             }
 
-            // Create the user
             User createdUser = userDao.createUser(newUser);
 
-            // Create profile based on user type
             if (createdUser.getUserType() == User.UserType.Musician) {
                 MusicianProfile createdProfile = musicianProfileDao.createMusicianProfile(createdUser.getUserId());
                 return ResponseEntity.status(HttpStatus.CREATED).body(MusicianProfileDto.fromEntity(createdProfile));
@@ -112,7 +115,6 @@ public class AuthenticationController {
             User actingUser = userDao.getUserByUsername(principal.getName());
             Long actingUserId = actingUser.getUserId();
             userDao.deleteUserByUsername(username, actingUserId);
-
             return ResponseEntity.noContent().build();
         } catch (UserNotFoundException e) {
             return ResponseEntity.notFound().build();
@@ -125,7 +127,7 @@ public class AuthenticationController {
     public ResponseEntity<Conversation> createConversation(@RequestBody ConversationDto conversationDto, Principal principal) {
         try {
             User sender = userDao.getUserByUsername(principal.getName());
-            List<User> participants = conversationDto.getParticipants(); // Assuming you pass participants in the DTO
+            List<User> participants = conversationDto.getParticipants();
             Conversation newConversation = conversationDao.createConversation(sender, participants);
             return new ResponseEntity<>(newConversation, HttpStatus.CREATED);
         } catch (UserNotFoundException e) {
@@ -171,7 +173,7 @@ public class AuthenticationController {
             }
 
             String fileName = userDao.uploadProfilePicture(userId, file);
-            User updatedUser = userDao.getUserById(userId); // Refresh user object to get updated profile info if needed
+            User updatedUser = userDao.getUserById(userId);
 
             if (user.getUserType() == User.UserType.Musician) {
                 MusicianProfile profile = musicianProfileDao.getMusicianProfileByUserId(userId);
@@ -225,7 +227,7 @@ public class AuthenticationController {
     @PostMapping("/users/{userId}/genres")
     public ResponseEntity<Void> addGenreToMusicianProfile(
             @PathVariable Long userId,
-            @RequestBody GenreDto genreDto,  // Change here to use a DTO
+            @RequestBody GenreDto genreDto,
             Principal principal) {
         try {
             User user = userDao.getUserById(userId);
@@ -252,7 +254,6 @@ public class AuthenticationController {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
         }
     }
-    // New endpoints for profile management
 
     @GetMapping("/users/{userId}/musician-profile")
     public ResponseEntity<MusicianProfileDto> getMusicianProfile(@PathVariable Long userId, Principal principal) {
@@ -331,7 +332,7 @@ public class AuthenticationController {
             }
 
             VenueProfile profile = new VenueProfile();
-            profile.setVenueProfileId(userId); // Assuming this is the profile ID
+            profile.setVenueProfileId(userId);
             profile.setName(profileDto.getVenueName());
             profile.setAddress(profileDto.getAddress());
             profile.setCity(profileDto.getCity());
@@ -351,6 +352,25 @@ public class AuthenticationController {
             return ResponseEntity.ok().build();
         } catch (UserNotFoundException e) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User or profile not found");
+        }
+    }
+
+    @GetMapping("/uploads/{filename:.+}")
+    public ResponseEntity<Resource> serveFile(@PathVariable String filename) {
+        try {
+            // Load from classpath (src/main/resources/uploads)
+            Resource resource = new ClassPathResource("uploads/" + filename);
+            System.out.println("Looking for file: " + filename + ", Exists: " + resource.exists());
+            if (resource.exists() && resource.isReadable()) {
+                return ResponseEntity.ok()
+                        .contentType(MediaType.IMAGE_JPEG)
+                        .body(resource);
+            }
+            System.out.println("File not found: " + filename);
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            System.out.println("Error serving file: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 }

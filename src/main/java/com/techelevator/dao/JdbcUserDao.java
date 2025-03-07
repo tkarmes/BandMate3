@@ -184,26 +184,19 @@ public class JdbcUserDao implements UserDao {
     @Override
     public String uploadProfilePicture(Long userId, MultipartFile file) throws UserNotFoundException {
         User user = getUserById(userId);
-
         if (user == null) {
             throw new UserNotFoundException("User not found with ID: " + userId);
         }
-
         try {
-            // Generate a unique filename
             String fileName = UUID.randomUUID().toString() + "_" + file.getOriginalFilename();
-
-            // Define the path where you want to store the file
-            Path uploadsDir = Paths.get("src", "main", "resources", "uploads");
+            Path uploadsDir = Paths.get("uploads"); // Runtime folder
             if (!Files.exists(uploadsDir)) {
                 Files.createDirectories(uploadsDir);
             }
             Path path = uploadsDir.resolve(fileName);
-
-            // Write the file to the specified path
+            System.out.println("Saving file to: " + path.toAbsolutePath());
             Files.write(path, file.getBytes());
 
-            // Update profile picture URL based on user type
             if (user.getUserType() == User.UserType.Musician) {
                 MusicianProfile profile = musicianProfileDao.getMusicianProfileByUserId(userId);
                 profile.setProfilePictureUrl(fileName);
@@ -213,11 +206,9 @@ public class JdbcUserDao implements UserDao {
                 profile.setProfilePictureUrl(fileName);
                 venueProfileDao.updateVenueProfile(userId, profile);
             } else {
-                // This else block is for users like admins who might not have profiles for pictures
                 throw new UnsupportedOperationException("Profile picture upload not supported for this user type");
             }
-
-            return fileName; // Return the filename here
+            return fileName;
         } catch (IOException e) {
             throw new DaoException("Could not store the file. Error: " + e.getMessage(), e);
         } catch (CannotGetJdbcConnectionException e) {

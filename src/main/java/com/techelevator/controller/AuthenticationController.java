@@ -275,26 +275,30 @@ public class AuthenticationController {
     }
 
     @PutMapping("/users/{userId}/musician-profile")
-    public ResponseEntity<Void> updateMusicianProfile(@PathVariable Long userId, @RequestBody MusicianProfileDto profileDto, Principal principal) {
+    public ResponseEntity<MusicianProfile> updateMusicianProfile(
+            @PathVariable Long userId,
+            @RequestBody MusicianProfileDto profileDto,
+            Principal principal
+    ) {
         try {
             User user = userDao.getUserById(userId);
             if (user == null || user.getUserType() != User.UserType.Musician) {
                 return ResponseEntity.notFound().build();
             }
-
             if (!principal.getName().equals(user.getUsername())) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
-
             MusicianProfile profile = musicianProfileDao.getMusicianProfileByUserId(userId);
             profile.setBio(profileDto.getBio());
             profile.setLocation(profileDto.getLocation());
             profile.setGenres(profileDto.getGenres());
             profile.setInstruments(profileDto.getInstruments());
-            profile.setProfilePictureUrl(profileDto.getProfilePictureUrl());
+            // Preserve existing profilePictureUrl if not provided
+            if (profileDto.getProfilePictureUrl() != null && !profileDto.getProfilePictureUrl().isEmpty()) {
+                profile.setProfilePictureUrl(profileDto.getProfilePictureUrl());
+            }
             musicianProfileDao.updateMusicianProfile(userId, profile);
-
-            return ResponseEntity.ok().build();
+            return ResponseEntity.ok(profile);
         } catch (UserNotFoundException e) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User or profile not found");
         }
@@ -358,9 +362,9 @@ public class AuthenticationController {
     @GetMapping("/uploads/{filename:.+}")
     public ResponseEntity<Resource> serveFile(@PathVariable String filename) {
         try {
-            // Load from classpath (src/main/resources/uploads)
-            Resource resource = new ClassPathResource("uploads/" + filename);
-            System.out.println("Looking for file: " + filename + ", Exists: " + resource.exists());
+            Path filePath = Paths.get("uploads").resolve(filename); // Runtime folder
+            Resource resource = new UrlResource(filePath.toUri());
+            System.out.println("Looking for file: " + filePath.toAbsolutePath() + ", Exists: " + resource.exists());
             if (resource.exists() && resource.isReadable()) {
                 return ResponseEntity.ok()
                         .contentType(MediaType.IMAGE_JPEG)

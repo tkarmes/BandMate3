@@ -26,9 +26,23 @@
         <label>Location:</label>
         <input v-model="editedProfile.location" placeholder="Your location" class="text-input" />
         <label>Genres:</label>
-        <input v-model="editedProfile.genres" placeholder="e.g., Rock, Jazz" class="text-input" />
+        <select v-model="editedProfile.genres" multiple class="select-input">
+          <option value="Rock">Rock</option>
+          <option value="Country">Country</option>
+          <option value="Jazz">Jazz</option>
+          <option value="Blues">Blues</option>
+          <option value="Pop">Pop</option>
+          <!-- Add more as needed -->
+        </select>
         <label>Instruments:</label>
-        <input v-model="editedProfile.instruments" placeholder="e.g., Guitar, Drums" class="text-input" />
+        <select v-model="editedProfile.instruments" multiple class="select-input">
+          <option value="Guitar">Guitar</option>
+          <option value="Bass">Bass</option>
+          <option value="Drums">Drums</option>
+          <option value="Vocals">Vocals</option>
+          <option value="Piano">Piano</option>
+          <!-- Add more as needed -->
+        </select>
         <button type="submit">Save</button>
         <button type="button" @click="cancelEditing">Cancel</button>
       </form>
@@ -48,8 +62,8 @@ export default {
       editedProfile: {
         bio: '',
         location: '',
-        genres: '',
-        instruments: ''
+        genres: [],
+        instruments: []
       }
     };
   },
@@ -88,45 +102,54 @@ export default {
       this.editedProfile = {
         bio: this.profile.bio || '',
         location: this.profile.location || '',
-        genres: this.profile.genres || '',
-        instruments: this.profile.instruments || ''
+        genres: this.profile.genres ? this.profile.genres.split(' ') : [],
+        instruments: this.profile.instruments ? this.profile.instruments.split(' ') : []
       };
     },
     async saveProfile() {
-  const token = localStorage.getItem('token');
-  const userId = localStorage.getItem('userId');
-  console.log('Saving profile with Token:', token, 'UserId:', userId);
-  if (!token || !userId) {
-    console.log('Missing token or userId - aborting save');
-    this.editing = false;
-    return;
-  }
-  try {
-    // Send current profilePictureUrl to preserve it
-    const payload = { ...this.editedProfile, profilePictureUrl: this.profile.profilePictureUrl };
-    const response = await axios.put(
-      `http://localhost:9000/users/${userId}/musician-profile`,
-      payload,
-      { headers: { 'Authorization': `Bearer ${token}` } }
-    );
-    console.log('Save response:', response.data);
-    this.profile = response.data;
-    this.editing = false;
-  } catch (err) {
-    console.error('Profile update failed:', err.response?.status, err.response?.data || err.message);
-    // Only logout on explicit 401
-    if (err.response?.status === 401) {
-      console.log('Token expired - logging out');
-      this.$parent.logout();
-    } else {
-      console.log('Save failed but staying logged in');
-      this.editing = false; // Stay in, just stop editing
-       }
-     }
+      const token = localStorage.getItem('token');
+      const userId = localStorage.getItem('userId');
+      console.log('Saving profile with Token:', token, 'UserId:', userId);
+      if (!token || !userId) {
+        console.log('Missing token or userId - aborting save');
+        this.editing = false;
+        return;
+      }
+      try {
+        const payload = {
+          ...this.editedProfile,
+          genres: this.editedProfile.genres.join(' '),
+          instruments: this.editedProfile.instruments.join(' '),
+          profilePictureUrl: this.profile.profilePictureUrl
+        };
+        const response = await axios.put(
+          `http://localhost:9000/users/${userId}/musician-profile`,
+          payload,
+          { headers: { 'Authorization': `Bearer ${token}` } }
+        );
+        console.log('Save response:', response.data);
+        this.profile = response.data;
+        this.editing = false;
+      } catch (err) {
+        console.error('Profile update failed:', err.response?.status, err.response?.data || err.message);
+        if (err.response?.status === 401) {
+          console.log('Token expired - logging out');
+          this.$parent.logout();
+        } else {
+          console.log('Save failed but staying logged in');
+          this.editing = false;
+        }
+      }
+    },
+    cancelEditing() {
+      this.editing = false;
+      this.editedProfile = { bio: '', location: '', genres: [], instruments: [] };
+    },
+    onImageError() {
+      console.log('Image failed to load:', this.imageUrl);
     }
   }
 };
-
 </script>
 
 <style scoped>
@@ -168,12 +191,57 @@ h2 {
 }
 
 .profile-pic {
-  width: 200px; /* Fixed width */
-  height: 200px; /* Fixed height */
-  object-fit: cover; /* Crop if needed */
+  width: 200px;
+  height: 200px;
+  object-fit: cover;
   border-radius: 50%;
   border: 3px solid var(--primary);
   box-shadow: 0 0 10px rgba(69, 123, 157, 0.5);
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+label {
+  color: var(--text);
+  font-size: 16px;
+  margin-bottom: 5px;
+}
+
+.bio-input {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #444;
+  border-radius: 4px;
+  background-color: #333;
+  color: var(--text);
+  font-size: 16px;
+  min-height: 100px;
+  margin-bottom: 15px;
+}
+
+.text-input {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #444;
+  border-radius: 4px;
+  background-color: #333;
+  color: var(--text);
+  font-size: 16px;
+}
+
+.select-input {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #444;
+  border-radius: 4px;
+  background-color: #333;
+  color: var(--text);
+  font-size: 16px;
+  height: 100px; /* Fixed height for multi-select */
 }
 
 button {
@@ -184,7 +252,7 @@ button {
   border-radius: 5px;
   cursor: pointer;
   font-size: 16px;
-  margin-top: 20px; /* Space from pic */
+  margin-top: 20px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
   transition: all 0.3s ease;
 }

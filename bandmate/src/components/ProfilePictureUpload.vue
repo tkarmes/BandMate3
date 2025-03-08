@@ -18,49 +18,91 @@
 import axios from 'axios';
 
 export default {
-  name: 'ProfilePictureUpload',
+  name: 'ConversationList',
   data() {
     return {
-      file: null,
-      message: ''
+      conversationId: '',
+      messages: [],
+      loading: false,
+      error: '',
+      newMessage: '',
+      receiverId: '',
+      sending: false
     };
   },
   methods: {
-    onFileChange(event) {
-      this.file = event.target.files[0];
-    },
-    async handleUpload() {
-      if (!this.file) {
-        this.message = 'Please select a file.';
+    async fetchMessages() {
+      const token = localStorage.getItem('token');
+      if (!token || !this.conversationId) {
+        this.error = 'Missing token or conversation ID';
         return;
       }
+      this.loading = true;
+      this.error = '';
+      try {
+        const response = await axios.get(
+          `http://localhost:9000/conversations/${this.conversationId}/messages`,
+          { headers: { 'Authorization': `Bearer ${token}` } }
+        );
+        console.log('Messages response:', response.data);
+        this.messages = response.data;
+      } catch (err) {
+        this.error = err.response?.data || 'Failed to load messages';
+        console.error('Fetch messages failed:', err.response?.data || err.message);
+        this.messages = [];
+      } finally {
+        this.loading = false;
+      }
+    },
+    async createAndSendMessage() {
       const token = localStorage.getItem('token');
       const userId = localStorage.getItem('userId');
-      if (!token) {
-        this.message = 'Please log in first.';
+      if (!token || !userId || !this.newMessage || !this.receiverId) {
+        this.error = 'Missing required fields';
         return;
       }
-
-      const formData = new FormData();
-      formData.append('file', this.file);
-
+      this.sending = true;
+      this.error = '';
       try {
-        const response = await axios.post(
-          `http://localhost:9000/users/${userId}/profile-picture`,
-          formData,
-          {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'multipart/form-data'
-            }
-          }
+        if (!this.conversationId) {
+          const convoPayload = {
+            participants: [
+              { userId: Number(userId) },
+              { userId: Number(this.receiverId) }
+            ]
+          };
+          const convoResponse = await axios.post(
+            'http://localhost:9000/conversations',
+            convoPayload,
+            { headers: { 'Authorization': `Bearer ${token}` } }
+          );
+          console.log('Conversation created:', convoResponse.data);
+          this.conversationId = convoResponse.data.conversationId;
+        }
+        const messagePayload = {
+          conversationId: Number(this.conversationId),
+          receiverId: Number(this.receiverId),
+          content: this.newMessage
+        };
+        const messageResponse = await axios.post(
+          'http://localhost:9000/messages',
+          messagePayload,
+          { headers: { 'Authorization': `Bearer ${token}` } }
         );
-        this.message = 'Upload successful!';
-        console.log(response.data);
-        this.$emit('upload-success'); // Emit event to refresh profile
+        console.log('Send response:', messageResponse.data);
+        this.messages.push(messageResponse.data);
+        this.newMessage = '';
       } catch (err) {
-        this.message = 'Upload failed: ' + (err.response?.data?.message || err.message);
+        this.error = err.response?.data?.message || 'Failed to send message';
+        console.error('Send message failed:', err.response?.data || err.message);
+      } finally {
+        this.sending = false;
       }
+    },
+    formatTimestamp(timestamp) {
+      if (!timestamp) return 'Just now';
+      const date = new Date(timestamp);
+      return isNaN(date.getTime()) ? 'Just now' : date.toLocaleString();
     }
   }
 };

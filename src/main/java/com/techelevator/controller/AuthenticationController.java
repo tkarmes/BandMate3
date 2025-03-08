@@ -377,4 +377,16 @@ public class AuthenticationController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
+
+    @GetMapping("/conversations")
+    public ResponseEntity<List<Conversation>> getUserConversations(Principal principal) {
+        try {
+            User user = userDao.getUserByUsername(principal.getName());
+            List<Conversation> conversations = conversationDao.getAllConversationsForUser(user.getUserId());
+            return new ResponseEntity<>(conversations, HttpStatus.OK);
+        } catch (UserNotFoundException e) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
+        }
+    }
+
 }

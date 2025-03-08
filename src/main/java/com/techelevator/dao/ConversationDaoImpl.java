@@ -1,16 +1,20 @@
 package com.techelevator.dao;
 
+import com.techelevator.exception.DaoException;
 import com.techelevator.model.Conversation;
 import com.techelevator.model.User;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
+import org.springframework.jdbc.support.rowset.SqlRowSet;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.PreparedStatement;
 import java.sql.Timestamp;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
@@ -51,12 +55,23 @@ public class ConversationDaoImpl implements ConversationDao {
 
     @Override
     public List<Conversation> getAllConversationsForUser(Long userId) {
-        String sql = "SELECT c.conversation_id, c.created_at FROM conversations c " +
+        List<Conversation> conversations = new ArrayList<>();
+        String sql = "SELECT c.conversation_id, c.created_at " +
+                "FROM conversations c " +
                 "JOIN conversation_participants cp ON c.conversation_id = cp.conversation_id " +
                 "WHERE cp.user_id = ?";
-        // Implementation for fetching conversations for a user would go here
-        // For now, returning null as a placeholder
-        return null;
+        try {
+            SqlRowSet results = jdbcTemplate.queryForRowSet(sql, userId);
+            while (results.next()) {
+                Conversation convo = new Conversation();
+                convo.setConversationId(results.getLong("conversation_id"));
+                convo.setCreatedAt(results.getTimestamp("created_at")); // Pass Timestamp directly
+                conversations.add(convo);
+            }
+        } catch (DataAccessException e) {
+            throw new DaoException("Failed to fetch conversations", e);
+        }
+        return conversations;
     }
 
     @Override

@@ -1,10 +1,13 @@
 <template>
   <div id="app">
     <h1>Bandmate</h1>
-    <button v-if="isLoggedIn" @click="logout">Logout</button>
-    <LoginForm @login-success="onLoginSuccess" />
-    <ProfilePictureUpload @upload-success="onUploadSuccess" />
-    <ProfileDisplay ref="profileDisplay" />
+    <button v-if="loggedIn" @click="logout">Logout</button>
+    <LoginForm v-if="!loggedIn" @login-success="onLoginSuccess" />
+    <div v-if="loggedIn" class="content">
+      <ProfilePictureUpload @upload-success="onUploadSuccess" />
+      <ProfileDisplay ref="profileDisplay" />
+      <ConversationList />
+    </div>
   </div>
 </template>
 
@@ -12,31 +15,57 @@
 import LoginForm from './components/LoginForm.vue';
 import ProfilePictureUpload from './components/ProfilePictureUpload.vue';
 import ProfileDisplay from './components/ProfileDisplay.vue';
+import ConversationList from './components/ConversationList.vue';
 
 export default {
   name: 'App',
   components: {
     LoginForm,
     ProfilePictureUpload,
-    ProfileDisplay
+    ProfileDisplay,
+    ConversationList
   },
-  computed: {
-    isLoggedIn() {
-      return !!localStorage.getItem('token');
+  data() {
+    return {
+      loggedIn: false // Always start false
+    };
+  },
+  created() {
+    // Only stay logged in if token exists AND we’re not reloading fresh
+    const token = localStorage.getItem('token');
+    if (token && !window.performance.navigation.type === 0) { // Not a full page load
+      this.loggedIn = true;
+      this.$nextTick(() => {
+        if (this.$refs.profileDisplay) {
+          this.$refs.profileDisplay.fetchProfile();
+        }
+      });
     }
   },
   methods: {
     onLoginSuccess() {
       console.log('Login successful event received');
-      this.$refs.profileDisplay.fetchProfile();
+      this.loggedIn = true;
+      this.$nextTick(() => {
+        if (this.$refs.profileDisplay) {
+          this.$refs.profileDisplay.fetchProfile();
+        } else {
+          console.log('ProfileDisplay ref still not ready');
+        }
+      });
     },
     onUploadSuccess() {
       console.log('Upload successful event received');
-      this.$refs.profileDisplay.fetchProfile();
+      if (this.$refs.profileDisplay) {
+        this.$refs.profileDisplay.fetchProfile();
+      }
     },
     logout() {
       localStorage.clear();
-      this.$refs.profileDisplay.profile = null;
+      this.loggedIn = false;
+      if (this.$refs.profileDisplay) {
+        this.$refs.profileDisplay.profile = null;
+      }
     }
   }
 };
@@ -44,13 +73,13 @@ export default {
 
 <style>
 :root {
-  --primary: #457b9d; /* Blue buttons */
-  --secondary: #e63946; /* Red logout/errors */
-  --success: #2a9d8f; /* Green success */
-  --background: #1a1a1a; /* Dark gray-black */
-  --text: #f0f0f0; /* Off-white text */
-  --accent: #a3bffa; /* Lighter blue hover */
-  --card-bg: #2c2c2c; /* Darker card */
+  --primary: #457b9d;
+  --secondary: #e63946;
+  --success: #2a9d8f;
+  --background: #1a1a1a;
+  --text: #f0f0f0;
+  --accent: #a3bffa;
+  --card-bg: #2c2c2c;
 }
 
 #app {
@@ -69,7 +98,7 @@ h1 {
   margin-bottom: 20px;
   font-size: 2.5em;
   letter-spacing: 1px;
-  text-transform: uppercase; /* Rock vibe */
+  text-transform: uppercase;
 }
 
 button {
@@ -86,8 +115,14 @@ button {
 }
 
 button:hover {
-  background-color: darken(var(--secondary), 10%);
+  background-color: var(--accent);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.7);
   transform: translateY(-2px);
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 </style>

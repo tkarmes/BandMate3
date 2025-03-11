@@ -2,27 +2,27 @@
     <div class="conversation">
       <h2>Your Conversations</h2>
       <ul v-if="conversations.length" class="convo-list">
-        <li v-for="convo in conversations" :key="convo.conversationId" @click="selectConversation(convo.conversationId)">
+        <li v-for="convo in conversations" :key="convo.conversationId" 
+            @click="selectConversation(convo.conversationId)"
+            :class="{ active: convo.conversationId === conversationId }">
           Conversation {{ convo.conversationId }} - {{ formatTimestamp(convo.createdAt) }}
         </li>
       </ul>
       <p v-else>No conversations yet.</p>
-      <h3>Messages</h3>
-      <input v-model="conversationId" placeholder="Enter Conversation ID" class="text-input" />
-      <button @click="fetchMessages" :disabled="loading">Load Messages</button>
-      <p v-if="loading">Loading...</p>
-      <p v-if="error" class="error">{{ error }}</p>
-      <ul v-if="messages.length && !loading">
-        <li v-for="message in messages" :key="message.messageId" class="message">
+      <h3 v-if="conversationId">Messages for Convo {{ conversationId }}</h3>
+      <ul v-if="messages.length && !loading" class="message-list">
+        <li v-for="message in messages" :key="message.messageId" 
+            :class="['message', isSent(message) ? 'sent' : 'received']">
           <strong>{{ message.senderId }}:</strong> {{ message.content }}
           <span class="timestamp">{{ formatTimestamp(message.sentAt) }}</span>
         </li>
       </ul>
-      <p v-else-if="!loading">No messages yet.</p>
-      <div class="send-message">
-        <input v-model="newMessage" placeholder="Type a message" class="text-input" />
-        <input v-model="receiverId" placeholder="Receiver ID" class="text-input" />
-        <button @click="createAndSendMessage" :disabled="sending || !newMessage || !receiverId">Send</button>
+      <p v-else-if="!loading && conversationId">No messages yet.</p>
+      <p v-if="loading">Loading...</p>
+      <p v-if="error" class="error">{{ error }}</p>
+      <div v-if="conversationId" class="send-message">
+        <input v-model="newMessage" placeholder="Type a reply" class="text-input" @keyup.enter="sendMessage" />
+        <button @click="sendMessage" :disabled="sending || !newMessage">Send</button>
       </div>
     </div>
   </template>
@@ -41,10 +41,12 @@
         error: '',
         newMessage: '',
         receiverId: '',
-        sending: false
+        sending: false,
+        userId: null // Add this
       };
     },
     created() {
+      this.userId = Number(localStorage.getItem('userId')); // Set once
       this.fetchConversations();
     },
     methods: {
@@ -81,6 +83,11 @@
           );
           console.log('Messages response:', response.data);
           this.messages = response.data;
+          if (response.data.length) {
+            this.receiverId = response.data[0].senderId === this.userId 
+              ? response.data[0].receiverId 
+              : response.data[0].senderId;
+          }
         } catch (err) {
           this.error = err.response?.data || 'Failed to load messages';
           console.error('Fetch messages failed:', err.response?.data || err.message);
@@ -89,44 +96,27 @@
           this.loading = false;
         }
       },
-      async createAndSendMessage() {
+      async sendMessage() {
         const token = localStorage.getItem('token');
-        const userId = localStorage.getItem('userId');
-        if (!token || !userId || !this.newMessage || !this.receiverId) {
+        if (!token || !this.userId || !this.newMessage || !this.conversationId) {
           this.error = 'Missing required fields';
           return;
         }
         this.sending = true;
         this.error = '';
         try {
-          if (!this.conversationId) {
-            const convoPayload = {
-              participants: [
-                { userId: Number(userId) },
-                { userId: Number(this.receiverId) }
-              ]
-            };
-            const convoResponse = await axios.post(
-              'http://localhost:9000/conversations',
-              convoPayload,
-              { headers: { 'Authorization': `Bearer ${token}` } }
-            );
-            console.log('Conversation created:', convoResponse.data);
-            this.conversationId = convoResponse.data.conversationId;
-            this.fetchConversations(); // Refresh convo list
-          }
           const messagePayload = {
             conversationId: Number(this.conversationId),
             receiverId: Number(this.receiverId),
             content: this.newMessage
           };
-          const messageResponse = await axios.post(
+          const response = await axios.post(
             'http://localhost:9000/messages',
             messagePayload,
             { headers: { 'Authorization': `Bearer ${token}` } }
           );
-          console.log('Send response:', messageResponse.data);
-          this.messages.push(messageResponse.data);
+          console.log('Send response:', response.data);
+          this.messages.push(response.data);
           this.newMessage = '';
         } catch (err) {
           this.error = err.response?.data?.message || 'Failed to send message';
@@ -135,14 +125,49 @@
           this.sending = false;
         }
       },
+      async createAndSendMessage() {
+        const token = localStorage.getItem('token');
+        if (!token || !this.userId || !this.newMessage || !this.receiverId) {
+          this.error = 'Missing required fields';
+          return;
+        }
+        this.sending = true;
+        this.error = '';
+        try {
+          const convoPayload = {
+            participants: [
+              { userId: this.userId },
+              { userId: Number(this.receiverId) }
+            ]
+          };
+          const convoResponse = await axios.post(
+            'http://localhost:9000/conversations',
+            convoPayload,
+            { headers: { 'Authorization': `Bearer ${token}` } }
+          );
+          console.log('Conversation created:', convoResponse.data);
+          this.conversationId = convoResponse.data.conversationId;
+          this.fetchConversations();
+          await this.sendMessage();
+        } catch (err) {
+          this.error = err.response?.data?.message || 'Failed to create/send message';
+          console.error('Create and send failed:', err.response?.data || err.message);
+        } finally {
+          this.sending = false;
+        }
+      },
       formatTimestamp(timestamp) {
         if (!timestamp) return 'Just now';
-        const date = new Date(timestamp);
+        const date = timestamp instanceof Date ? timestamp : new Date(timestamp);
         return isNaN(date.getTime()) ? 'Just now' : date.toLocaleString();
       },
       selectConversation(id) {
         this.conversationId = id;
+        this.messages = [];
         this.fetchMessages();
+      },
+      isSent(message) {
+        return message.senderId === this.userId;
       }
     }
   };
@@ -161,16 +186,21 @@
   h2, h3 {
     color: var(--text);
     margin-bottom: 15px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
   }
   
   .convo-list {
     list-style: none;
     padding: 0;
     margin-bottom: 20px;
+    max-height: 200px;
+    overflow-y: auto;
   }
   
   .convo-list li {
-    padding: 10px;
+    padding: 12px;
     border-bottom: 1px solid #444;
     color: var(--text);
     cursor: pointer;
@@ -181,8 +211,55 @@
     background-color: var(--accent);
   }
   
+  .convo-list li.active {
+    background-color: var(--primary);
+    color: #fff;
+    font-weight: bold;
+  }
+  
+  .message-list {
+    list-style: none;
+    padding: 0;
+    margin-top: 20px;
+    max-height: 300px;
+    overflow-y: auto;
+  }
+  
+  .message {
+    padding: 10px 15px;
+    margin: 5px 0;
+    border-radius: 8px;
+    color: var(--text);
+    background-color: #333;
+    position: relative;
+    max-width: 80%;
+  }
+  
+  .message.sent {
+    background-color: var(--success);
+    margin-left: auto;
+    text-align: right;
+  }
+  
+  .message.received {
+    background-color: #444;
+    margin-right: auto;
+  }
+  
+  .message strong {
+    color: var(--primary);
+    font-weight: 600;
+  }
+  
+  .timestamp {
+    font-size: 10px;
+    color: #aaa;
+    display: block;
+    margin-top: 5px;
+  }
+  
   .text-input {
-    width: 200px;
+    width: 300px;
     padding: 10px;
     border: 1px solid #444;
     border-radius: 4px;
@@ -190,6 +267,12 @@
     color: var(--text);
     font-size: 16px;
     margin-right: 10px;
+    transition: border-color 0.3s ease;
+  }
+  
+  .text-input:focus {
+    border-color: var(--accent);
+    outline: none;
   }
   
   button {
@@ -212,24 +295,6 @@
   button:hover:not(:disabled) {
     background-color: var(--accent);
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.7);
-  }
-  
-  ul {
-    list-style: none;
-    padding: 0;
-    margin-top: 20px;
-  }
-  
-  .message {
-    padding: 10px;
-    border-bottom: 1px solid #444;
-    color: var(--text);
-  }
-  
-  .timestamp {
-    font-size: 12px;
-    color: #aaa;
-    margin-left: 10px;
   }
   
   p {

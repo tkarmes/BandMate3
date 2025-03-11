@@ -6,7 +6,7 @@
     <div v-if="loggedIn" class="content">
       <ProfilePictureUpload @upload-success="onUploadSuccess" />
       <ProfileDisplay ref="profileDisplay" />
-      <ConversationList />
+      <ConversationList /> <!-- No onUploadSuccess here -->
     </div>
   </div>
 </template>

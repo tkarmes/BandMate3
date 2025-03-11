@@ -109,6 +109,31 @@ public class AuthenticationController {
         }
     }
 
+
+    @GetMapping("/users/{userId}")
+    public ResponseEntity<UserDto> getUserById(@PathVariable Long userId, Principal principal) {
+        try {
+            User user = userDao.getUserById(userId);
+            if (user == null) return ResponseEntity.notFound().build();
+            UserDto dto = UserDto.fromUser(user);
+            // Fetch profile based on user type
+            if (user.getUserType() == User.UserType.Musician) {
+                MusicianProfile profile = musicianProfileDao.getMusicianProfileByUserId(userId);
+                if (profile != null) {
+                    dto.setProfilePictureUrl(profile.getProfilePictureUrl());
+                }
+            } else if (user.getUserType() == User.UserType.VenueOwner) {
+                VenueProfile profile = venueProfileDao.getVenueProfileByUserId(userId);
+                if (profile != null) {
+                    dto.setProfilePictureUrl(profile.getProfilePictureUrl());
+                }
+            }
+            return ResponseEntity.ok(dto);
+        } catch (UserNotFoundException e) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
+        }
+    }
+
     @DeleteMapping("/users/{username}")
     public ResponseEntity<Void> deleteUserByUsername(@PathVariable String username, Principal principal) {
         try {

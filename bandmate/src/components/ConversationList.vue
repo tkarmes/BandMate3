@@ -13,8 +13,13 @@
       <ul v-if="messages.length && !loading" class="message-list">
         <li v-for="message in messages" :key="message.messageId" 
             :class="['message', isSent(message) ? 'sent' : 'received']">
-          <strong>{{ message.senderId }}:</strong> {{ message.content }}
-          <span class="timestamp">{{ formatTimestamp(message.sentAt) }}</span>
+          <img v-if="users[message.senderId]?.profilePictureUrl" 
+               :src="`http://localhost:9000/uploads/${users[message.senderId].profilePictureUrl}`" 
+               class="avatar" />
+          <div class="message-content">
+            <strong>{{ users[message.senderId]?.username || message.senderId }}:</strong> {{ message.content }}
+            <span class="timestamp">{{ formatTimestamp(message.sentAt) }}</span>
+          </div>
         </li>
       </ul>
       <p v-else-if="!loading && conversationId">No messages yet.</p>
@@ -42,11 +47,12 @@
         newMessage: '',
         receiverId: '',
         sending: false,
-        userId: null // Add this
+        userId: null,
+        users: {}
       };
     },
     created() {
-      this.userId = Number(localStorage.getItem('userId')); // Set once
+      this.userId = Number(localStorage.getItem('userId'));
       this.fetchConversations();
     },
     methods: {
@@ -87,6 +93,7 @@
             this.receiverId = response.data[0].senderId === this.userId 
               ? response.data[0].receiverId 
               : response.data[0].senderId;
+            await this.fetchUsers(response.data);
           }
         } catch (err) {
           this.error = err.response?.data || 'Failed to load messages';
@@ -168,6 +175,24 @@
       },
       isSent(message) {
         return message.senderId === this.userId;
+      },
+      async fetchUsers(messages) {
+        const token = localStorage.getItem('token');
+        const uniqueSenderIds = [...new Set(messages.map(m => m.senderId))];
+        for (const senderId of uniqueSenderIds) {
+          if (!this.users[senderId]) {
+            try {
+              const response = await axios.get(
+                `http://localhost:9000/users/${senderId}`,
+                { headers: { 'Authorization': `Bearer ${token}` } }
+              );
+              this.users[senderId] = response.data; // Direct assignment for Vue 3
+              console.log(`Fetched user ${senderId}:`, response.data);
+            } catch (err) {
+              console.error(`Failed to fetch user ${senderId}:`, err);
+            }
+          }
+        }
       }
     }
   };
@@ -226,24 +251,37 @@
   }
   
   .message {
+    display: flex;
+    align-items: flex-start;
     padding: 10px 15px;
     margin: 5px 0;
     border-radius: 8px;
     color: var(--text);
     background-color: #333;
-    position: relative;
     max-width: 80%;
   }
   
   .message.sent {
     background-color: var(--success);
     margin-left: auto;
-    text-align: right;
+    flex-direction: row-reverse;
   }
   
   .message.received {
     background-color: #444;
     margin-right: auto;
+  }
+  
+  .avatar {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    margin: 0 10px;
+    border: 1px solid #444;
+  }
+  
+  .message-content {
+    flex: 1;
   }
   
   .message strong {

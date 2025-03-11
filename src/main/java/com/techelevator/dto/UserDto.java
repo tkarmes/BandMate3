@@ -25,14 +25,12 @@ public class UserDto {
         this.roles = roles;
     }
 
-    // Static method to convert from entity to DTO
     public static UserDto fromUser(User user) {
         UserDto dto = new UserDto();
         dto.setUserId(user.getUserId());
         dto.setUsername(user.getUsername());
         dto.setEmail(user.getEmail());
         dto.setUserType(user.getUserType().toString());
-        // Use the getName method from Authority class
         dto.setRoles(user.getAuthorities().stream().map(Authority::getName).toList());
         dto.setProfilePictureUrl(null); // No profile entity, hence always null for now
         return dto;

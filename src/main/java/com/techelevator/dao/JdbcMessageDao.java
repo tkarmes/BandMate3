@@ -15,12 +15,12 @@ import java.util.List;
 import java.util.Objects;
 
 @Repository
-public class MessageDaoImpl implements MessageDao {
+public class JdbcMessageDao implements MessageDao {
 
     private final JdbcTemplate jdbcTemplate;
 
     @Autowired
-    public MessageDaoImpl(JdbcTemplate jdbcTemplate) {
+    public JdbcMessageDao(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
     }
 

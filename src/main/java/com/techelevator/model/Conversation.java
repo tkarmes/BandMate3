@@ -9,6 +9,7 @@ public class Conversation {
     private Long conversationId;
     private Date createdAt;
     private List<Message> messages;
+    private List<User> participants; // Added field
 
     /**
      * Default constructor for frameworks like JPA or when deserializing from JSON.
@@ -51,6 +52,14 @@ public class Conversation {
         this.messages = messages;
     }
 
+    public List<User> getParticipants() {
+        return participants;
+    }
+
+    public void setParticipants(List<User> participants) {
+        this.participants = participants;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -70,6 +79,7 @@ public class Conversation {
                 "conversationId=" + conversationId +
                 ", createdAt=" + createdAt +
                 ", messages=" + messages +
+                ", participants=" + participants + // Updated toString
                 '}';
     }
 }

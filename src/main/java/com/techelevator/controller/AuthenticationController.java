@@ -36,6 +36,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.Principal;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
 @CrossOrigin
@@ -58,7 +59,6 @@ public class AuthenticationController {
         this.musicianProfileDao = musicianProfileDao;
         this.venueProfileDao = venueProfileDao;
     }
-
     @RequestMapping(path = "/login", method = RequestMethod.POST)
     public ResponseEntity<LoginResponseDto> login(@Valid @RequestBody LoginDto loginDto) {
         UsernamePasswordAuthenticationToken authenticationToken =
@@ -404,11 +404,23 @@ public class AuthenticationController {
     }
 
     @GetMapping("/conversations")
-    public ResponseEntity<List<Conversation>> getUserConversations(Principal principal) {
+    public ResponseEntity<List<ConversationDto>> getUserConversations(Principal principal) {
         try {
             User user = userDao.getUserByUsername(principal.getName());
             List<Conversation> conversations = conversationDao.getAllConversationsForUser(user.getUserId());
-            return new ResponseEntity<>(conversations, HttpStatus.OK);
+            List<ConversationDto> conversationDtos = conversations.stream().map(conv -> {
+                ConversationDto dto = new ConversationDto();
+                dto.setConversationId(conv.getConversationId());
+                dto.setCreatedAt(conv.getCreatedAt()); // Keep as Date
+                List<String> participantUsernames = conversationDao.getParticipants(conv.getConversationId())
+                        .stream()
+                        .filter(u -> !u.getUserId().equals(user.getUserId()))
+                        .map(User::getUsername)
+                        .collect(Collectors.toList());
+                dto.setParticipantNames(participantUsernames);
+                return dto;
+            }).collect(Collectors.toList());
+            return new ResponseEntity<>(conversationDtos, HttpStatus.OK);
         } catch (UserNotFoundException e) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
         }

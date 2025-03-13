@@ -3,7 +3,6 @@ package com.techelevator.dao;
 import com.techelevator.model.Conversation;
 import com.techelevator.model.Message;
 import com.techelevator.model.User;
-
 import java.util.List;
 
 public interface ConversationDao {
@@ -53,4 +52,11 @@ public interface ConversationDao {
      * @return true if the conversation was deleted, false otherwise (e.g., if permission was denied).
      */
     boolean deleteConversation(Long conversationId, Long userId);
+
+    /**
+     * Retrieves all participants in a conversation.
+     * @param conversationId The ID of the conversation.
+     * @return A list of User objects representing the participants.
+     */
+    List<User> getParticipants(Long conversationId);
 }

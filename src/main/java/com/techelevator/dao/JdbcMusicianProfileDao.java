@@ -20,7 +20,10 @@ public class JdbcMusicianProfileDao implements MusicianProfileDao {
 
     @Override
     public MusicianProfile getMusicianProfileByUserId(Long userId) throws DaoException {
-        String sql = "SELECT * FROM musician_profiles WHERE user_id = ?";
+        String sql = "SELECT mp.*, u.username " + // Added username from users table
+                "FROM musician_profiles mp " +
+                "JOIN users u ON mp.user_id = u.user_id " +
+                "WHERE mp.user_id = ?";
         SqlRowSet results = jdbcTemplate.queryForRowSet(sql, userId);
         if (results.next()) {
             return mapRowToMusicianProfile(results);
@@ -87,14 +90,18 @@ public class JdbcMusicianProfileDao implements MusicianProfileDao {
     private MusicianProfile mapRowToMusicianProfile(SqlRowSet rs) {
         MusicianProfile profile = new MusicianProfile();
         profile.setMusicianProfileId(rs.getLong("musician_profile_id"));
-        profile.setUser(new User(rs.getLong("user_id")));
+
+        User user = new User();
+        user.setUserId(rs.getLong("user_id"));
+        user.setUsername(rs.getString("username")); // Added username mapping
+        profile.setUser(user);
+
         profile.setBio(rs.getString("bio") != null ? rs.getString("bio") : "");
         profile.setLocation(rs.getString("location") != null ? rs.getString("location") : "");
         profile.setGenres(rs.getString("genres") != null ? rs.getString("genres") : "");
         profile.setInstruments(rs.getString("instruments") != null ? rs.getString("instruments") : "");
         profile.setProfilePictureUrl(rs.getString("profile_picture_url") != null ? rs.getString("profile_picture_url") : "");
 
-        // Handle timestamps as Strings since that's what MusicianProfile expects
         Timestamp createdAt = rs.getTimestamp("created_at");
         profile.setCreatedAt(createdAt != null ? createdAt.toString() : "");
         Timestamp updatedAt = rs.getTimestamp("updated_at");

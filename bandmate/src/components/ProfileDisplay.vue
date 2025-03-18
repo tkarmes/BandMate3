@@ -106,7 +106,7 @@ export default {
   computed: {
     imageUrl() {
       const url = this.profile?.profilePictureUrl
-        ? `http://localhost:9000/uploads/${this.profile.profilePictureUrl}?t=${Date.now()}`
+        ? `http://localhost:9000/users/uploads/${this.profile.profilePictureUrl}?t=${Date.now()}` // Changed to /users/uploads/
         : '';
       return url;
     },

@@ -23,22 +23,23 @@ export default {
     };
   },
   methods: {
-  async handleLogin() {
-    try {
-      const response = await axios.post('http://localhost:9000/login', {
-        username: this.username,
-        password: this.password
-      });
-      localStorage.setItem('token', response.data.token);
-      localStorage.setItem('userId', response.data.user.userId);
-      this.error = '';
-      this.$emit('login-success'); // Must emit this
-    } catch (err) {
-      this.error = err.response?.data || 'Login failed';
-      console.log('Login error:', this.error);
+    async handleLogin() {
+      try {
+        const response = await axios.post('http://localhost:9000/auth/login', { // Changed to /auth/login
+          username: this.username,
+          password: this.password
+        });
+        localStorage.setItem('token', response.data.token);
+        localStorage.setItem('userId', response.data.user.userId);
+        this.error = '';
+        this.$emit('login-success'); // Must emit this
+        console.log('Login successful:', response.data); // Optional: for debugging
+      } catch (err) {
+        this.error = err.response?.data || 'Login failed';
+        console.log('Login error:', this.error);
+      }
     }
   }
-}
 };
 </script>
 

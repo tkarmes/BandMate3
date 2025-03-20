@@ -107,20 +107,25 @@ public class ProfileController {
             profile.setInstruments(instruments != null ? instruments : profile.getInstruments());
 
             if (profilePicture != null && !profilePicture.isEmpty()) {
-                String uploadDir = "./uploads/"; // Runtime directory
+                String uploadDir = "C:/workspace/capstone/java/uploads/"; // Absolute path
                 String fileName = UUID.randomUUID().toString() + "-" + profilePicture.getOriginalFilename();
                 Path filePath = Paths.get(uploadDir, fileName);
-                Files.createDirectories(filePath.getParent());
-                profilePicture.transferTo(filePath.toFile());
-                profile.setProfilePictureUrl(fileName);
+                System.out.println("Saving picture to: " + filePath.toAbsolutePath());
+                try {
+                    Files.createDirectories(filePath.getParent());
+                    profilePicture.transferTo(filePath.toFile());
+                    System.out.println("File saved successfully: " + fileName);
+                    profile.setProfilePictureUrl(fileName);
+                } catch (IOException e) {
+                    System.out.println("IOException during file save: " + e.getMessage());
+                    throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to upload picture", e);
+                }
             } else if (profilePictureUrl != null && !profilePictureUrl.isEmpty()) {
                 profile.setProfilePictureUrl(profilePictureUrl);
             }
 
             musicianProfileDao.updateMusicianProfile(userId, profile);
             return ResponseEntity.ok(profile);
-        } catch (IOException e) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to upload picture", e);
         } catch (UserNotFoundException e) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User or profile not found", e);
         }

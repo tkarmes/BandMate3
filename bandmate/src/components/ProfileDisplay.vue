@@ -1,86 +1,37 @@
 <template>
-  <div v-if="profile" class="musician-profile">
-    <!-- Hero Section -->
-    <div class="hero" :style="heroBackgroundStyle">
-      <div class="overlay"></div>
-      <div class="hero-content">
-        <div class="hero-info">
-          <div class="profile-pic-container" v-if="profile.profilePictureUrl">
-            <img
-              :src="imageUrl"
-              alt="Profile Picture"
-              class="profile-pic"
-              @error="onImageError"
-            />
-          </div>
-          <h1>{{ profile.user?.username || 'Musician' }}</h1>
-          <p class="location">{{ profile.location || 'Unknown Location' }}</p>
-        </div>
-        <button class="edit-btn" @click="startEditing" v-if="!editing">Edit Profile</button>
-      </div>
+  <div class="profile-display">
+    <div class="hero">
+      <img v-if="imageUrl" :src="imageUrl" alt="Profile Picture" class="profile-pic" @error="onImageError" />
+      <h1>{{ profile ? profile.username : 'Loading...' }}</h1>
+      <div class="hero-background" :style="heroBackgroundStyle"></div>
     </div>
-    <!-- Details Section -->
-    <div class="details" v-if="!editing">
-      <div class="bio-card">
-        <h2>Bio</h2>
-        <p>{{ profile.bio || 'Tell us about yourself!' }}</p>
+    <div class="profile-details">
+      <div v-if="!editing" class="info-section">
+        <p><strong>Bio:</strong> {{ profile?.bio || 'No bio yet' }}</p>
+        <p><strong>Location:</strong> {{ profile?.location || 'Not specified' }}</p>
+        <p><strong>Genres:</strong> {{ profile?.genres || 'None listed' }}</p>
+        <p><strong>Instruments:</strong> {{ profile?.instruments || 'None listed' }}</p>
+        <button @click="startEditing" class="edit-btn">Edit Profile</button>
       </div>
-      <div class="genres-card">
-        <h2>Genres</h2>
-        <p>{{ profile.genres || 'No genres set' }}</p>
-      </div>
-      <div class="instruments-card">
-        <h2>Instruments</h2>
-        <p>{{ profile.instruments || 'No instruments set' }}</p>
-      </div>
-    </div>
-
-    <!-- Edit Form -->
-    <div class="edit-form" v-else>
-      <form @submit.prevent="saveProfile">
-        <div class="form-group">
-          <label>Profile Picture</label>
+      <div v-else class="edit-section">
+        <form @submit.prevent="saveProfile" enctype="multipart/form-data">
+          <label>Bio:</label>
+          <textarea v-model="editedProfile.bio"></textarea>
+          <label>Location:</label>
+          <input v-model="editedProfile.location" type="text" />
+          <label>Genres (space-separated):</label>
+          <input v-model="editedProfile.genres" type="text" />
+          <label>Instruments (space-separated):</label>
+          <input v-model="editedProfile.instruments" type="text" />
+          <label>Profile Picture:</label>
           <input type="file" @change="onFileChange" accept="image/*" />
-          <img
-            :src="previewImage || imageUrl"
-            alt="Preview"
-            class="profile-pic-preview"
-            v-if="previewImage || profile.profilePictureUrl"
-          />
-        </div>
-        <div class="form-group">
-          <label>Bio</label>
-          <textarea v-model="editedProfile.bio" placeholder="Your bio" class="bio-input"></textarea>
-        </div>
-        <div class="form-group">
-          <label>Location</label>
-          <input v-model="editedProfile.location" placeholder="Your location" class="text-input" />
-        </div>
-        <div class="form-group">
-          <label>Genres</label>
-          <select v-model="editedProfile.genres" multiple class="select-input">
-            <option value="Rock">Rock</option>
-            <option value="Country">Country</option>
-            <option value="Jazz">Jazz</option>
-            <option value="Blues">Blues</option>
-            <option value="Pop">Pop</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label>Instruments</label>
-          <select v-model="editedProfile.instruments" multiple class="select-input">
-            <option value="Guitar">Guitar</option>
-            <option value="Bass">Bass</option>
-            <option value="Drums">Drums</option>
-            <option value="Vocals">Vocals</option>
-            <option value="Piano">Piano</option>
-          </select>
-        </div>
-        <div class="form-actions">
-          <button type="submit" class="save-btn">Save</button>
-          <button type="button" class="cancel-btn" @click="cancelEditing">Cancel</button>
-        </div>
-      </form>
+          <img v-if="previewImage" :src="previewImage" alt="Preview" class="preview-pic" />
+          <div class="form-buttons">
+            <button type="submit">Save</button>
+            <button type="button" @click="cancelEditing">Cancel</button>
+          </div>
+        </form>
+      </div>
     </div>
   </div>
 </template>
@@ -100,29 +51,27 @@ export default {
         genres: [],
         instruments: []
       },
-      previewImage: null // For picture upload preview
+      previewImage: null
     };
   },
   computed: {
     imageUrl() {
       const url = this.profile?.profilePictureUrl
-        ? `http://localhost:9000/users/uploads/${this.profile.profilePictureUrl}?t=${Date.now()}` // Changed to /users/uploads/
+        ? `http://localhost:9000/users/uploads/${this.profile.profilePictureUrl}?t=${Date.now()}`
         : '';
       return url;
     },
     heroBackgroundStyle() {
       return this.profile?.profilePictureUrl
-        ? { backgroundImage: `url(${this.imageUrl})` }
-        : { background: 'linear-gradient(to right, #00ffcc, #457b9d)' };
+        ? { backgroundImage: `url(${this.imageUrl})`, opacity: 0.2 }
+        : { background: 'linear-gradient(to right, #1a1a1a, #333)' };
     }
   },
   methods: {
     async fetchProfile() {
       const token = localStorage.getItem('token');
       const userId = localStorage.getItem('userId');
-      console.log('Fetching profile with Token:', token, 'UserId:', userId);
       if (!token || !userId) {
-        console.log('Missing token or userId');
         this.profile = null;
         return;
       }
@@ -130,7 +79,6 @@ export default {
         const response = await axios.get(`http://localhost:9000/users/${userId}/musician-profile`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
-        console.log('Profile response:', response.data);
         this.profile = response.data;
       } catch (err) {
         console.error('Profile fetch failed:', err.response?.data || err.message);
@@ -145,14 +93,12 @@ export default {
         genres: this.profile.genres ? this.profile.genres.split(' ') : [],
         instruments: this.profile.instruments ? this.profile.instruments.split(' ') : []
       };
-      this.previewImage = null; // Reset preview
+      this.previewImage = null;
     },
     async saveProfile() {
       const token = localStorage.getItem('token');
       const userId = localStorage.getItem('userId');
-      console.log('Saving profile with Token:', token, 'UserId:', userId);
       if (!token || !userId) {
-        console.log('Missing token or userId - aborting save');
         this.editing = false;
         return;
       }
@@ -174,19 +120,12 @@ export default {
           formData,
           { headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'multipart/form-data' } }
         );
-        console.log('Save response:', response.data);
         this.profile = response.data;
         this.editing = false;
         this.previewImage = null;
       } catch (err) {
         console.error('Profile update failed:', err.response?.status, err.response?.data || err.message);
-        if (err.response?.status === 401) {
-          console.log('Token expired - logging out');
-          this.$parent.logout();
-        } else {
-          console.log('Save failed but staying logged in');
-          this.editing = false;
-        }
+        this.editing = false;
       }
     },
     cancelEditing() {
@@ -203,223 +142,166 @@ export default {
         this.previewImage = URL.createObjectURL(file);
       }
     }
+  },
+  created() {
+    this.fetchProfile();
   }
 };
 </script>
 
 <style scoped>
-.musician-profile {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 20px;
-  background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
+.profile-display {
+  width: 100%;
   min-height: 100vh;
-  color: #fff;
+  margin: 0;
+  padding: 0;
+  font-family: 'Arial', sans-serif;
+  background-color: #1a1a1a;
+  color: var(--text);
 }
 
-/* Hero Section */
 .hero {
   position: relative;
+  width: 100%;
+  height: 200px;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  padding: 40px 20px;
-  border-radius: 15px;
-  margin-bottom: 30px;
-  background-size: cover;
-  background-position: center;
-  min-height: 300px;
+  justify-content: center;
+  overflow: hidden;
 }
 
-.overlay {
+.profile-pic {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  border: 3px solid #333;
+  object-fit: cover;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+  margin-bottom: 10px;
+  z-index: 1;
+}
+
+h1 {
+  color: #fff;
+  font-size: 2em;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
+  margin: 0;
+  z-index: 1;
+}
+
+.hero-background {
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(10px);
-  border-radius: 15px;
-  z-index: 1;
+  background-size: cover;
+  background-position: center;
+  opacity: 0.2;
+  filter: blur(5px);
+  z-index: 0;
 }
 
-.hero-content {
-  position: relative;
-  z-index: 2;
-  display: flex;
-  align-items: center;
+.profile-details {
   width: 100%;
+  padding: 20px;
+  background-color: #222;
 }
 
-.profile-pic-container {
-  margin-right: 30px;
+.info-section {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 0 20px;
 }
 
-.profile-pic {
-  width: 150px;
-  height: 150px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 4px solid #fff;
-  box-shadow: 0 0 20px rgba(0, 255, 204, 0.5);
-  transition: transform 0.3s ease;
-}
-
-.profile-pic:hover {
-  transform: scale(1.05);
-}
-
-.hero-info {
-  flex: 1;
-}
-
-h1 {
-  font-size: 2.5em;
-  margin: 0;
-  color: #fff;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
-}
-
-.location {
+.info-section p {
+  margin: 15px 0;
   font-size: 1.2em;
-  color: #e0e0e0;
-  margin: 5px 0 0;
+}
+
+.info-section strong {
+  color: var(--primary);
+  font-weight: 600;
 }
 
 .edit-btn {
-  position: absolute;
-  top: 20px;
-  right: 20px;
-  background: #fff;
-  color: #1a1a1a;
+  background-color: var(--primary);
+  color: #fff;
   padding: 10px 20px;
   border: none;
-  border-radius: 25px;
-  font-weight: bold;
+  border-radius: 5px;
   cursor: pointer;
+  font-size: 16px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
   transition: all 0.3s ease;
-  z-index: 2;
 }
 
 .edit-btn:hover {
-  background: #00ffcc;
-  transform: scale(1.05);
+  background-color: var(--accent);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.7);
 }
 
-/* Details Section */
-.details {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 20px;
-}
-
-.bio-card, .genres-card, .instruments-card {
-  background: #333;
+.edit-section {
+  max-width: 800px;
+  margin: 20px auto;
   padding: 20px;
-  border-radius: 10px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-  transition: transform 0.2s ease;
+  background-color: #2a2a2a;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.5);
 }
 
-.bio-card:hover, .genres-card:hover, .instruments-card:hover {
-  transform: translateY(-5px);
-}
-
-h2 {
-  font-size: 1.5em;
-  margin: 0 0 10px;
-  color: #00ffcc;
-}
-
-p {
-  font-size: 1.1em;
-  color: #ddd;
-  margin: 0;
-}
-
-/* Edit Form */
-.edit-form {
-  background: #2a2a2a;
-  padding: 30px;
-  border-radius: 15px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-}
-
-.form-group {
-  margin-bottom: 20px;
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
 }
 
 label {
-  display: block;
-  font-size: 1.2em;
-  color: #00ffcc;
-  margin-bottom: 5px;
-}
-
-.bio-input {
-  width: 100%;
-  min-height: 120px;
-  padding: 15px;
-  background: #1a1a1a;
-  border: 1px solid #444;
-  border-radius: 8px;
-  color: #fff;
-  font-size: 1em;
-  resize: vertical;
-}
-
-.text-input, .select-input {
-  width: 100%;
-  padding: 12px;
-  background: #1a1a1a;
-  border: 1px solid #444;
-  border-radius: 8px;
-  color: #fff;
-  font-size: 1em;
-}
-
-.select-input {
-  height: 120px;
-}
-
-.profile-pic-preview {
-  width: 100px;
-  height: 100px;
-  border-radius: 50%;
+  color: var(--primary);
+  font-weight: 600;
   margin-top: 10px;
-  object-fit: cover;
 }
 
-.form-actions {
+input, textarea {
+  padding: 10px;
+  border: 1px solid #444;
+  border-radius: 4px;
+  background-color: #333;
+  color: #fff;
+  font-size: 16px;
+}
+
+textarea {
+  resize: vertical;
+  min-height: 100px;
+}
+
+.preview-pic {
+  max-width: 200px;
+  margin-top: 10px;
+  border-radius: 8px;
+}
+
+.form-buttons {
   display: flex;
   gap: 10px;
 }
 
-.save-btn, .cancel-btn {
-  padding: 12px 25px;
+button {
+  background-color: var(--primary);
+  color: #fff;
+  padding: 10px 20px;
   border: none;
-  border-radius: 25px;
-  font-weight: bold;
+  border-radius: 5px;
   cursor: pointer;
+  font-size: 16px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
   transition: all 0.3s ease;
 }
 
-.save-btn {
-  background: #00ffcc;
-  color: #1a1a1a;
-}
-
-.save-btn:hover {
-  background: #00e6b3;
-  transform: scale(1.05);
-}
-
-.cancel-btn {
-  background: #666;
-  color: #fff;
-}
-
-.cancel-btn:hover {
-  background: #888;
-  transform: scale(1.05);
+button:hover {
+  background-color: var(--accent);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.7);
 }
 </style>

@@ -21,6 +21,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.Principal;
+import java.util.Arrays;
 import java.util.UUID;
 
 @RestController
@@ -144,33 +145,68 @@ public class ProfileController {
         }
     }
 
-    @PutMapping("/{userId}/venue-profile")
-    public ResponseEntity<Void> updateVenueProfile(@PathVariable Long userId, @RequestBody VenueProfileDto profileDto, Principal principal) {
+    @PutMapping(value = "/{userId}/venue-profile", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<VenueProfile> updateVenueProfile(
+            @PathVariable Long userId,
+            @RequestParam(value = "profilePicture", required = false) MultipartFile profilePicture,
+            @RequestParam(value = "venueName", required = false) String venueName,
+            @RequestParam(value = "address", required = false) String address,
+            @RequestParam(value = "city", required = false) String city,
+            @RequestParam(value = "state", required = false) String state,
+            @RequestParam(value = "zipCode", required = false) String zipCode,
+            @RequestParam(value = "capacity", required = false) Integer capacity,
+            @RequestParam(value = "venueType", required = false) String venueType,
+            @RequestParam(value = "genrePreferences", required = false) String genrePreferences,
+            @RequestParam(value = "phone", required = false) String phone,
+            @RequestParam(value = "email", required = false) String email,
+            @RequestParam(value = "websiteUrl", required = false) String websiteUrl,
+            @RequestParam(value = "operatingHours", required = false) String operatingHours,
+            @RequestParam(value = "amenities", required = false) String amenities,
+            @RequestParam(value = "profilePictureUrl", required = false) String profilePictureUrl,
+            Principal principal
+    ) {
         try {
             User user = userDao.getUserById(userId);
             if (user == null || user.getUserType() != User.UserType.VenueOwner) return ResponseEntity.notFound().build();
             if (!principal.getName().equals(user.getUsername())) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
 
-            VenueProfile profile = new VenueProfile();
-            profile.setVenueProfileId(userId);
-            profile.setName(profileDto.getVenueName());
-            profile.setAddress(profileDto.getAddress());
-            profile.setCity(profileDto.getCity());
-            profile.setState(profileDto.getState());
-            profile.setZipCode(profileDto.getZipCode());
-            profile.setCapacity(profileDto.getCapacity());
-            profile.setVenueType(profileDto.getVenueType());
-            profile.setGenrePreferences(profileDto.getGenrePreferences());
-            profile.setPhone(profileDto.getPhone());
-            profile.setEmail(profileDto.getEmail());
-            profile.setWebsiteUrl(profileDto.getWebsiteUrl());
-            profile.setOperatingHours(profileDto.getOperatingHours());
-            profile.setAmenities(profileDto.getAmenities());
-            profile.setProfilePictureUrl(profileDto.getProfilePictureUrl());
+            VenueProfile profile = venueProfileDao.getVenueProfileByUserId(userId);
+            profile.setName(venueName != null ? venueName : profile.getName());
+            profile.setAddress(address != null ? address : profile.getAddress());
+            profile.setCity(city != null ? city : profile.getCity());
+            profile.setState(state != null ? state : profile.getState());
+            profile.setZipCode(zipCode != null ? zipCode : profile.getZipCode());
+            profile.setCapacity(capacity != null ? capacity : profile.getCapacity());
+            profile.setVenueType(venueType != null ? venueType : profile.getVenueType());
+            profile.setGenrePreferences(genrePreferences != null ? Arrays.asList(genrePreferences.split("\\s+")) : profile.getGenrePreferences());
+            profile.setPhone(phone != null ? phone : profile.getPhone());
+            profile.setEmail(email != null ? email : profile.getEmail());
+            profile.setWebsiteUrl(websiteUrl != null ? websiteUrl : profile.getWebsiteUrl());
+            profile.setOperatingHours(operatingHours != null ? operatingHours : profile.getOperatingHours());
+            profile.setAmenities(amenities != null ? Arrays.asList(amenities.split("\\s+")) : profile.getAmenities());
+
+            if (profilePicture != null && !profilePicture.isEmpty()) {
+                String uploadDir = "C:/workspace/capstone/java/uploads/";
+                String fileName = UUID.randomUUID().toString() + "-" + profilePicture.getOriginalFilename();
+                Path filePath = Paths.get(uploadDir, fileName);
+                System.out.println("Saving picture to: " + filePath.toAbsolutePath());
+                try {
+                    Files.createDirectories(filePath.getParent());
+                    profilePicture.transferTo(filePath.toFile());
+                    System.out.println("File saved successfully: " + fileName);
+                    profile.setProfilePictureUrl(fileName);
+                } catch (IOException e) {
+                    System.out.println("IOException during file save: " + e.getMessage());
+                    throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to upload picture", e);
+                }
+            } else if (profilePictureUrl != null && !profilePictureUrl.isEmpty()) {
+                profile.setProfilePictureUrl(profilePictureUrl);
+            }
+
             venueProfileDao.updateVenueProfile(userId, profile);
-            return ResponseEntity.ok().build();
+            return ResponseEntity.ok(profile);
         } catch (UserNotFoundException e) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User or profile not found");
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User or profile not found", e);
         }
     }
 

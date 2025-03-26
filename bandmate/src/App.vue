@@ -3,7 +3,8 @@
     <h1>Bandmate</h1>
     <LoginForm v-if="!loggedIn" @login-success="onLoginSuccess" />
     <div v-if="loggedIn" class="content">
-      <ProfileDisplay ref="profileDisplay" />
+      <ProfileDisplay v-if="userType === 'Musician'" ref="profileDisplay" />
+      <VenueProfile v-if="userType === 'VenueOwner'" ref="venueProfile" />
       <ConversationList />
       <button v-if="loggedIn" @click="logout" class="logout-btn">Logout</button>
     </div>
@@ -13,49 +14,63 @@
 <script>
 import LoginForm from './components/LoginForm.vue';
 import ProfileDisplay from './components/ProfileDisplay.vue';
+import VenueProfile from './components/VenueProfile.vue';
 import ConversationList from './components/ConversationList.vue';
+import axios from 'axios';
 
 export default {
   name: 'App',
   components: {
     LoginForm,
     ProfileDisplay,
+    VenueProfile,
     ConversationList
   },
   data() {
     return {
-      loggedIn: false
+      loggedIn: false,
+      userType: null
     };
   },
   created() {
     const token = localStorage.getItem('token');
     if (token && !window.performance.navigation.type === 0) {
       this.loggedIn = true;
-      this.$nextTick(() => {
-        if (this.$refs.profileDisplay) {
-          this.$refs.profileDisplay.fetchProfile();
-        }
-      });
+      this.fetchUserType();
     }
   },
   methods: {
+    async fetchUserType() {
+      const token = localStorage.getItem('token');
+      const userId = localStorage.getItem('userId');
+      if (!token || !userId) return;
+      try {
+        const response = await axios.get(`http://localhost:9000/users/${userId}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        this.userType = response.data.userType;
+        this.$nextTick(() => {
+          if (this.userType === 'Musician' && this.$refs.profileDisplay) {
+            this.$refs.profileDisplay.fetchProfile();
+          } else if (this.userType === 'VenueOwner' && this.$refs.venueProfile) {
+            this.$refs.venueProfile.fetchProfile();
+          }
+        });
+      } catch (err) {
+        console.error('User type fetch failed:', err.response?.data || err.message);
+      }
+    },
     onLoginSuccess() {
       console.log('Login successful event received');
       this.loggedIn = true;
-      this.$nextTick(() => {
-        if (this.$refs.profileDisplay) {
-          this.$refs.profileDisplay.fetchProfile();
-        } else {
-          console.log('ProfileDisplay ref still not ready');
-        }
-      });
+      this.fetchUserType();
     },
     logout() {
       localStorage.clear();
       this.loggedIn = false;
-      if (this.$refs.profileDisplay) {
-        this.$refs.profileDisplay.profile = null;
-      }
+      this.userType = null;
+      if (this.$refs.profileDisplay) this.$refs.profileDisplay.profile = null;
+      if (this.$refs.venueProfile) this.$refs.venueProfile.profile = null;
     }
   }
 };

@@ -13,7 +13,7 @@
 
 <script>
 import LoginForm from './components/LoginForm.vue';
-import ProfileDisplay from './components/ProfileDisplay.vue';
+import ProfileDisplay from './components/MusicianProfile.vue';
 import VenueProfile from './components/VenueProfile.vue';
 import ConversationList from './components/ConversationList.vue';
 import axios from 'axios';

@@ -37,10 +37,28 @@ public class JdbcConversationDao implements ConversationDao {
 
     @Override
     public Conversation createConversation(User sender, List<User> participants) {
+        // For 1:1 conversations, check if one exists
+        if (participants.size() == 2) {
+            Long userId1 = sender.getUserId();
+            Long userId2 = participants.stream()
+                    .filter(p -> !p.getUserId().equals(userId1))
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException("Sender must be in participants"))
+                    .getUserId();
+
+            Conversation existingConvo = getConversationBetweenUsers(userId1, userId2);
+            if (existingConvo != null) {
+                existingConvo.setParticipants(getParticipants(existingConvo.getConversationId()));
+                return existingConvo; // Reuse existing conversation
+            }
+        }
+
+        // Create new conversation
         String sql = "INSERT INTO conversations (created_at) VALUES (CURRENT_TIMESTAMP) RETURNING conversation_id";
         Long conversationId = jdbcTemplate.queryForObject(sql, Long.class);
 
-        String participantSql = "INSERT INTO conversation_participants (conversation_id, user_id) VALUES (?, ?)";
+        String participantSql = "INSERT INTO conversation_participants (conversation_id, user_id) " +
+                "VALUES (?, ?) ON CONFLICT (conversation_id, user_id) DO NOTHING";
         jdbcTemplate.update(participantSql, conversationId, sender.getUserId());
         for (User participant : participants) {
             jdbcTemplate.update(participantSql, conversationId, participant.getUserId());
@@ -88,21 +106,19 @@ public class JdbcConversationDao implements ConversationDao {
 
     @Override
     public boolean addUserToConversation(Long conversationId, Long userId) {
-        // First check if user is already in conversation
         String checkSql = "SELECT COUNT(*) FROM conversation_participants " +
                 "WHERE conversation_id = ? AND user_id = ?";
         Integer count = jdbcTemplate.queryForObject(checkSql, Integer.class, conversationId, userId);
 
         if (count != null && count > 0) {
-            return false; // User already in conversation
+            return false;
         }
 
-        // Check if conversation exists
         String convoCheckSql = "SELECT COUNT(*) FROM conversations WHERE conversation_id = ?";
         Integer convoCount = jdbcTemplate.queryForObject(convoCheckSql, Integer.class, conversationId);
 
         if (convoCount == null || convoCount == 0) {
-            return false; // Conversation doesn't exist
+            return false;
         }
 
         String sql = "INSERT INTO conversation_participants (conversation_id, user_id) VALUES (?, ?)";
@@ -120,22 +136,40 @@ public class JdbcConversationDao implements ConversationDao {
 
     @Override
     public boolean deleteConversation(Long conversationId, Long userId) {
-        // First verify user is in the conversation
         String checkSql = "SELECT COUNT(*) FROM conversation_participants " +
                 "WHERE conversation_id = ? AND user_id = ?";
         Integer count = jdbcTemplate.queryForObject(checkSql, Integer.class, conversationId, userId);
 
         if (count == null || count == 0) {
-            return false; // User not in conversation or conversation doesn't exist
+            return false;
         }
 
-        // Delete all participants first (due to foreign key constraints)
         String deleteParticipantsSql = "DELETE FROM conversation_participants WHERE conversation_id = ?";
         jdbcTemplate.update(deleteParticipantsSql, conversationId);
 
-        // Then delete the conversation
         String deleteSql = "DELETE FROM conversations WHERE conversation_id = ?";
         int rowsAffected = jdbcTemplate.update(deleteSql, conversationId);
         return rowsAffected > 0;
+    }
+
+    @Override
+    public Conversation getConversationBetweenUsers(Long userId1, Long userId2) {
+        String sql = "SELECT c.conversation_id, c.created_at " +
+                "FROM conversations c " +
+                "JOIN conversation_participants cp1 ON c.conversation_id = cp1.conversation_id " +
+                "JOIN conversation_participants cp2 ON c.conversation_id = cp2.conversation_id " +
+                "WHERE cp1.user_id = ? AND cp2.user_id = ? AND " +
+                "(SELECT COUNT(*) FROM conversation_participants cp WHERE cp.conversation_id = c.conversation_id) = 2";
+
+        try {
+            return jdbcTemplate.queryForObject(sql, new Object[]{userId1, userId2}, (rs, rowNum) -> {
+                Conversation convo = new Conversation();
+                convo.setConversationId(rs.getLong("conversation_id"));
+                convo.setCreatedAt(rs.getTimestamp("created_at"));
+                return convo;
+            });
+        } catch (Exception e) {
+            return null; // No 1:1 conversation found
+        }
     }
 }

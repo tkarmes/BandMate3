@@ -39,6 +39,12 @@ public class MessagingController {
         try {
             User sender = userDao.getUserByUsername(principal.getName());
             List<User> participants = conversationDto.getParticipants();
+
+            // Ensure sender is in participants
+            if (!participants.stream().anyMatch(p -> p.getUserId().equals(sender.getUserId()))) {
+                participants.add(sender);
+            }
+
             Conversation newConversation = conversationDao.createConversation(sender, participants);
             return new ResponseEntity<>(newConversation, HttpStatus.CREATED);
         } catch (UserNotFoundException e) {
@@ -48,13 +54,16 @@ public class MessagingController {
 
     @PostMapping("/messages")
     public ResponseEntity<Message> sendMessage(@RequestBody MessageDto messageDto, Principal principal) {
+        System.out.println("Received message from: " + principal.getName() + ", DTO: " + messageDto);
         try {
             User sender = userDao.getUserByUsername(principal.getName());
             Message message = messageDao.sendMessage(messageDto.getConversationId(), sender.getUserId(),
                     messageDto.getReceiverId(), messageDto.getContent(),
                     messageDto.getParentMessageId());
+            System.out.println("Message saved: " + message);
             return new ResponseEntity<>(message, HttpStatus.CREATED);
         } catch (UserNotFoundException e) {
+            System.out.println("User not found: " + e.getMessage());
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Failed to send message");
         }
     }

@@ -8,33 +8,21 @@ public class Message {
     private Long messageId;
     private Long conversationId;
     private Long senderId;
-    private Long receiverId; // This might be null for group conversations
+    private Long receiverId;
     private String content;
-    private Long parentMessageId; // For threaded replies, this could be null for top-level messages
-    private Date sentAt;
+    private Long parentMessageId;
+    private String sentAt; // Changed to String for JSON compatibility
 
-    /**
-     * Default constructor for frameworks like JPA or when deserializing from JSON.
-     */
     public Message() {
     }
 
-    /**
-     * Constructor for creating a new message.
-     *
-     * @param conversationId The ID of the conversation this message belongs to.
-     * @param senderId The ID of the user sending the message.
-     * @param receiverId The ID of the user receiving the message (can be null for group chats).
-     * @param content The content of the message.
-     * @param parentMessageId The ID of the message this message is replying to, or null if it's a top-level message.
-     */
     public Message(Long conversationId, Long senderId, Long receiverId, String content, Long parentMessageId) {
         this.conversationId = conversationId;
         this.senderId = senderId;
         this.receiverId = receiverId;
         this.content = content;
         this.parentMessageId = parentMessageId;
-        this.sentAt = new Date(); // Sets the timestamp to now
+        this.sentAt = new Date().toString(); // Or use ISO format if preferred
     }
 
     // Getters and Setters
@@ -86,12 +74,21 @@ public class Message {
         this.parentMessageId = parentMessageId;
     }
 
-    public Date getSentAt() {
+    public String getSentAt() {
         return sentAt;
     }
 
-    public void setSentAt(Date sentAt) {
+    public void setSentAt(String sentAt) {
         this.sentAt = sentAt;
+    }
+
+    // Optional: Helper to convert sentAt to Date if needed
+    public Date getSentAtAsDate() {
+        try {
+            return new Date(sentAt); // Or use SimpleDateFormat/ISO parsing if needed
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     @Override
@@ -116,7 +113,7 @@ public class Message {
                 ", receiverId=" + receiverId +
                 ", content='" + content + '\'' +
                 ", parentMessageId=" + parentMessageId +
-                ", sentAt=" + sentAt +
+                ", sentAt='" + sentAt + '\'' +
                 '}';
     }
 }

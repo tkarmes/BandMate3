@@ -20,8 +20,17 @@
           <p><strong>Operating Hours:</strong> {{ profile?.operatingHours || 'Not specified' }}</p>
           <p><strong>Amenities:</strong> {{ profile?.amenities?.join(' ') || 'None listed' }}</p>
           <button @click="startEditing" class="edit-btn">Edit Profile</button>
+          <!-- Start Conversation Section -->
+          <div class="start-conversation">
+            <h3>Start a New Conversation</h3>
+            <input v-model="recipientUsername" type="text" placeholder="Enter username to message" />
+            <input v-model="initialMessage" placeholder="Type your message" />
+            <button @click="startConversation" :disabled="!recipientUsername || !initialMessage">Send</button>
+            <p v-if="error" class="error">{{ error }}</p>
+          </div>
         </div>
         <div v-else class="edit-section">
+          <!-- Edit form unchanged -->
           <form @submit.prevent="saveProfile" enctype="multipart/form-data">
             <label>Venue Name:</label>
             <input v-model="editedProfile.name" type="text" />
@@ -87,7 +96,10 @@
           amenities: '',
           profilePictureUrl: ''
         },
-        previewImage: null
+        previewImage: null,
+        recipientUsername: '', // Changed to username
+        initialMessage: '',
+        error: '' // For error messages
       };
     },
     computed: {
@@ -131,12 +143,12 @@
           zipCode: this.profile?.zipCode || '',
           capacity: this.profile?.capacity || '',
           venueType: this.profile?.venueType || '',
-          genrePreferences: this.profile?.genrePreferences || '',
+          genrePreferences: this.profile?.genrePreferences?.join(' ') || '',
           phone: this.profile?.phone || '',
           email: this.profile?.email || '',
           websiteUrl: this.profile?.websiteUrl || '',
           operatingHours: this.profile?.operatingHours || '',
-          amenities: this.profile?.amenities || '',
+          amenities: this.profile?.amenities?.join(' ') || '',
           profilePictureUrl: this.profile?.profilePictureUrl || ''
         };
         this.previewImage = null;
@@ -175,7 +187,7 @@
             formData,
             { headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'multipart/form-data' } }
           );
-          this.profile = response.data || this.profile; // Update if backend returns the profile
+          this.profile = response.data || this.profile;
           this.editing = false;
           this.previewImage = null;
         } catch (err) {
@@ -186,20 +198,9 @@
       cancelEditing() {
         this.editing = false;
         this.editedProfile = {
-          name: '',
-          address: '',
-          city: '',
-          state: '',
-          zipCode: '',
-          capacity: '',
-          venueType: '',
-          genrePreferences: '',
-          phone: '',
-          email: '',
-          websiteUrl: '',
-          operatingHours: '',
-          amenities: '',
-          profilePictureUrl: ''
+          name: '', address: '', city: '', state: '', zipCode: '', capacity: '',
+          venueType: '', genrePreferences: '', phone: '', email: '', websiteUrl: '',
+          operatingHours: '', amenities: '', profilePictureUrl: ''
         };
         this.previewImage = null;
       },
@@ -211,7 +212,58 @@
         if (file) {
           this.previewImage = URL.createObjectURL(file);
         }
-      }
+      },
+      async startConversation() {
+  const token = localStorage.getItem('token');
+  const userId = localStorage.getItem('userId');
+  if (!token || !userId || !this.recipientUsername || !this.initialMessage) {
+    this.error = 'Please enter a username and message';
+    return;
+  }
+  this.error = '';
+  console.log("Sending request for username:", this.recipientUsername);
+  try {
+    const userResponse = await axios.get(
+      `http://localhost:9000/users/by-username/${this.recipientUsername}`,
+      { headers: { 'Authorization': `Bearer ${token}` } }
+    );
+    console.log("Response:", userResponse.data);
+    const recipientId = userResponse.data.userId; // Changed from .id to .userId
+
+    const convoPayload = {
+      participants: [
+        { userId: Number(userId) },
+        { userId: Number(recipientId) }
+      ]
+    };
+    const convoResponse = await axios.post(
+      'http://localhost:9000/messaging/conversations',
+      convoPayload,
+      { headers: { 'Authorization': `Bearer ${token}` } }
+    );
+    const conversationId = convoResponse.data.conversationId;
+
+    const messagePayload = {
+      conversationId: conversationId,
+      senderId: Number(userId),
+      receiverId: Number(recipientId),
+      content: this.initialMessage,
+      sentAt: new Date().toISOString()
+    };
+    await axios.post(
+      'http://localhost:9000/messaging/messages',
+      messagePayload,
+      { headers: { 'Authorization': `Bearer ${token}` } }
+    );
+
+    this.$router.push({ name: 'ConversationList' });
+    this.recipientUsername = '';
+    this.initialMessage = '';
+  } catch (err) {
+    this.error = err.response?.data?.message || `User '${this.recipientUsername}' not found or failed to start conversation`;
+    console.error('Failed:', err.response?.status, err.response?.data || err.message);
+  }
+}
     },
     created() {
       this.fetchProfile();
@@ -220,158 +272,34 @@
   </script>
   
   <style scoped>
-  .venue-profile {
-    width: 100%;
-    min-height: 100vh;
-    margin: 0;
-    padding: 0;
-    font-family: 'Arial', sans-serif;
-    background-color: #1a1a1a;
-    color: var(--text);
-  }
-  
-  .hero {
-    position: relative;
-    width: 100%;
-    height: 200px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-  }
-  
-  .profile-pic {
-    width: 100px;
-    height: 100px;
-    border-radius: 50%;
-    border: 3px solid #333;
-    object-fit: cover;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
-    margin-bottom: 10px;
-    z-index: 1;
-  }
-  
-  h1 {
-    color: #fff;
-    font-size: 2em;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
-    margin: 0;
-    z-index: 1;
-  }
-  
-  .hero-background {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-size: cover;
-    background-position: center;
-    opacity: 0.2;
-    filter: blur(5px);
-    z-index: 0;
-  }
-  
-  .profile-details {
-    width: 100%;
-    padding: 20px;
-    background-color: #222;
-  }
-  
-  .info-section {
-    max-width: 800px;
-    margin: 0 auto;
-    padding: 0 20px;
-  }
-  
-  .info-section p {
-    margin: 15px 0;
-    font-size: 1.2em;
-  }
-  
-  .info-section strong {
-    color: var(--primary);
-    font-weight: 600;
-  }
-  
-  .edit-btn {
-    background-color: var(--primary);
-    color: #fff;
-    padding: 10px 20px;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 16px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
-    transition: all 0.3s ease;
-  }
-  
-  .edit-btn:hover {
-    background-color: var(--accent);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.7);
-  }
-  
-  .edit-section {
-    max-width: 800px;
-    margin: 20px auto;
-    padding: 20px;
-    background-color: #2a2a2a;
-    border-radius: 8px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.5);
-  }
-  
-  form {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-  }
-  
-  label {
-    color: var(--primary);
-    font-weight: 600;
-    margin-top: 10px;
-  }
-  
-  input, textarea {
+  /* Existing styles */
+  .start-conversation {
+    margin-top: 20px;
     padding: 10px;
     border: 1px solid #444;
-    border-radius: 4px;
-    background-color: #333;
-    color: #fff;
-    font-size: 16px;
+    border-radius: 5px;
   }
-  
-  textarea {
-    resize: vertical;
-    min-height: 100px;
+  .start-conversation h3 {
+    margin-bottom: 10px;
   }
-  
-  .preview-pic {
-    max-width: 200px;
-    margin-top: 10px;
-    border-radius: 8px;
+  .start-conversation input {
+    display: block;
+    width: 100%;
+    margin-bottom: 10px;
+    padding: 5px;
   }
-  
-  .form-buttons {
-    display: flex;
-    gap: 10px;
-  }
-  
-  button {
+  .start-conversation button {
     background-color: var(--primary);
-    color: #fff;
-    padding: 10px 20px;
+    color: white;
+    padding: 5px 10px;
     border: none;
     border-radius: 5px;
-    cursor: pointer;
-    font-size: 16px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
-    transition: all 0.3s ease;
   }
-  
-  button:hover {
-    background-color: var(--accent);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.7);
+  .start-conversation button:disabled {
+    background-color: #555;
+  }
+  .error {
+    color: var(--secondary);
+    margin-top: 5px;
   }
   </style>

@@ -32,7 +32,8 @@ public class JdbcMessageDao implements MessageDao {
         message.setReceiverId(rs.getLong("receiver_id"));
         message.setContent(rs.getString("content"));
         message.setParentMessageId(rs.getLong("parent_message_id"));
-        message.setSentAt(rs.getTimestamp("sent_at"));
+        Timestamp sentAt = rs.getTimestamp("sent_at");
+        message.setSentAt(sentAt != null ? sentAt.toString() : null); // Convert Timestamp to String
         return message;
     };
 
@@ -47,9 +48,9 @@ public class JdbcMessageDao implements MessageDao {
             PreparedStatement ps = connection.prepareStatement(sql, new String[]{"message_id"});
             ps.setLong(1, conversationId);
             ps.setLong(2, senderId);
-            ps.setObject(3, receiverId); // Use setObject for nullable Long
+            ps.setObject(3, receiverId);
             ps.setString(4, content);
-            ps.setObject(5, parentMessageId); // Use setObject for nullable Long
+            ps.setObject(5, parentMessageId);
             return ps;
         }, keyHolder);
 
@@ -60,7 +61,7 @@ public class JdbcMessageDao implements MessageDao {
         message.setReceiverId(receiverId);
         message.setContent(content);
         message.setParentMessageId(parentMessageId);
-        message.setSentAt(new Timestamp(System.currentTimeMillis()));
+        message.setSentAt(new Timestamp(System.currentTimeMillis()).toString()); // Convert to String
         return message;
     }
 
@@ -81,7 +82,6 @@ public class JdbcMessageDao implements MessageDao {
     @Override
     @Transactional
     public boolean deleteMessage(Long messageId, Long userId) {
-        // Here you would check if the user has permission to delete this message
         String sql = "DELETE FROM messages WHERE message_id = ? AND sender_id = ?";
         int deletedCount = jdbcTemplate.update(sql, messageId, userId);
         return deletedCount > 0;
@@ -90,14 +90,13 @@ public class JdbcMessageDao implements MessageDao {
     @Override
     @Transactional
     public Message updateMessage(Long messageId, Long userId, String newContent) {
-        // Here you would check if the user has permission to update this message
         String sql = "UPDATE messages SET content = ? WHERE message_id = ? AND sender_id = ?";
         int updatedCount = jdbcTemplate.update(sql, newContent, messageId, userId);
         if (updatedCount > 0) {
             Message updatedMessage = new Message();
             updatedMessage.setMessageId(messageId);
             updatedMessage.setContent(newContent);
-            return updatedMessage;
+            return updatedMessage; // Note: sentAt isn’t set here—might need to fetch full message
         }
         return null;
     }

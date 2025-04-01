@@ -12,6 +12,7 @@ import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
@@ -27,6 +28,7 @@ import java.util.UUID;
 @RestController
 @CrossOrigin
 @RequestMapping("/users")
+@PreAuthorize("isAuthenticated()") // Added for security
 public class ProfileController {
 
     private final UserDao userDao;
@@ -72,6 +74,22 @@ public class ProfileController {
         }
     }
 
+    @GetMapping("/by-username/{username}")
+    public ResponseEntity<User> getUserByUsername(@PathVariable String username) {
+        System.out.println("Received request for username: " + username);
+        try {
+            User user = userDao.getUserByUsername(username);
+            System.out.println("DAO returned: " + (user != null ? "User ID: " + user.getUserId() + ", Username: " + user.getUsername() : "null"));
+            if (user == null) {
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
+            }
+            return ResponseEntity.ok(user);
+        } catch (Exception e) {
+            System.out.println("Exception: " + e.getMessage());
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Error fetching user");
+        }
+    }
+
     @GetMapping("/{userId}/musician-profile")
     public ResponseEntity<MusicianProfileDto> getMusicianProfile(@PathVariable Long userId, Principal principal) {
         try {
@@ -108,7 +126,7 @@ public class ProfileController {
             profile.setInstruments(instruments != null ? instruments : profile.getInstruments());
 
             if (profilePicture != null && !profilePicture.isEmpty()) {
-                String uploadDir = "C:/workspace/capstone/java/uploads/"; // Absolute path
+                String uploadDir = "C:/workspace/capstone/java/uploads/";
                 String fileName = UUID.randomUUID().toString() + "-" + profilePicture.getOriginalFilename();
                 Path filePath = Paths.get(uploadDir, fileName);
                 System.out.println("Saving picture to: " + filePath.toAbsolutePath());

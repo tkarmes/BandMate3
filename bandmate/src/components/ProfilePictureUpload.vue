@@ -18,91 +18,50 @@
 import axios from 'axios';
 
 export default {
-  name: 'ConversationList',
+  name: 'UploadProfilePicture', // Renamed for clarity
   data() {
     return {
-      conversationId: '',
-      messages: [],
-      loading: false,
-      error: '',
-      newMessage: '',
-      receiverId: '',
-      sending: false
+      file: null,
+      message: ''
     };
   },
   methods: {
-    async fetchMessages() {
-      const token = localStorage.getItem('token');
-      if (!token || !this.conversationId) {
-        this.error = 'Missing token or conversation ID';
+    onFileChange(event) {
+      this.file = event.target.files[0];
+      this.message = '';
+    },
+    async handleUpload() {
+      if (!this.file) {
+        this.message = 'Please select a file';
         return;
       }
-      this.loading = true;
-      this.error = '';
-      try {
-        const response = await axios.get(
-          `http://localhost:9000/conversations/${this.conversationId}/messages`,
-          { headers: { 'Authorization': `Bearer ${token}` } }
-        );
-        console.log('Messages response:', response.data);
-        this.messages = response.data;
-      } catch (err) {
-        this.error = err.response?.data || 'Failed to load messages';
-        console.error('Fetch messages failed:', err.response?.data || err.message);
-        this.messages = [];
-      } finally {
-        this.loading = false;
-      }
-    },
-    async createAndSendMessage() {
       const token = localStorage.getItem('token');
       const userId = localStorage.getItem('userId');
-      if (!token || !userId || !this.newMessage || !this.receiverId) {
-        this.error = 'Missing required fields';
+      if (!token || !userId) {
+        this.message = 'Missing token or user ID';
         return;
       }
-      this.sending = true;
-      this.error = '';
+
+      const formData = new FormData();
+      formData.append('file', this.file);
+
       try {
-        if (!this.conversationId) {
-          const convoPayload = {
-            participants: [
-              { userId: Number(userId) },
-              { userId: Number(this.receiverId) }
-            ]
-          };
-          const convoResponse = await axios.post(
-            'http://localhost:9000/conversations',
-            convoPayload,
-            { headers: { 'Authorization': `Bearer ${token}` } }
-          );
-          console.log('Conversation created:', convoResponse.data);
-          this.conversationId = convoResponse.data.conversationId;
-        }
-        const messagePayload = {
-          conversationId: Number(this.conversationId),
-          receiverId: Number(this.receiverId),
-          content: this.newMessage
-        };
-        const messageResponse = await axios.post(
-          'http://localhost:9000/messages',
-          messagePayload,
-          { headers: { 'Authorization': `Bearer ${token}` } }
+        const response = await axios.post(
+          `http://localhost:9000/users/${userId}/profile-picture`,
+          formData,
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'multipart/form-data'
+            }
+          }
         );
-        console.log('Send response:', messageResponse.data);
-        this.messages.push(messageResponse.data);
-        this.newMessage = '';
+        this.message = 'Profile picture uploaded successfully';
+        console.log('Upload response:', response.data);
       } catch (err) {
-        this.error = err.response?.data?.message || 'Failed to send message';
-        console.error('Send message failed:', err.response?.data || err.message);
-      } finally {
-        this.sending = false;
+        this.message = err.response?.data?.message || 'Failed to upload picture';
+        console.error('Upload failed:', err.response?.data || err.message);
       }
-    },
-    formatTimestamp(timestamp) {
-      if (!timestamp) return 'Just now';
-      const date = new Date(timestamp);
-      return isNaN(date.getTime()) ? 'Just now' : date.toLocaleString();
     }
   }
 };

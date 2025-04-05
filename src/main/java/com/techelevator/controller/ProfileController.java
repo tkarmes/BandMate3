@@ -28,7 +28,7 @@ import java.util.UUID;
 @RestController
 @CrossOrigin
 @RequestMapping("/users")
-@PreAuthorize("isAuthenticated()") // Added for security
+@PreAuthorize("isAuthenticated()")
 public class ProfileController {
 
     private final UserDao userDao;
@@ -228,23 +228,33 @@ public class ProfileController {
         }
     }
 
+    @PreAuthorize("permitAll()") // Allow public access
     @GetMapping("/uploads/{filename:.+}")
     public ResponseEntity<Resource> serveFile(@PathVariable String filename) {
         try {
-            Path filePath = Paths.get("./uploads").resolve(filename);
-            System.out.println("Looking for file at: " + filePath.toAbsolutePath());
-            Resource resource = new UrlResource(filePath.toUri());
-            if (resource.exists() && resource.isReadable()) {
-                System.out.println("File found and readable: " + filename);
-                return ResponseEntity.ok()
-                        .contentType(MediaType.IMAGE_JPEG)
-                        .body(resource);
+            Path filePath = Paths.get("C:/workspace/capstone/java/uploads/").resolve(filename).normalize();
+            System.out.println("Serving file from: " + filePath.toAbsolutePath());
+            if (Files.exists(filePath)) {
+                Resource resource = new UrlResource(filePath.toUri());
+                if (resource.isReadable()) {
+                    System.out.println("File found and readable: " + filename);
+                    return ResponseEntity.ok()
+                            .contentType(MediaType.IMAGE_JPEG)
+                            .body(resource);
+                } else {
+                    System.out.println("File exists but not readable: " + filename);
+                    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                            .body(null);
+                }
+            } else {
+                System.out.println("File does not exist: " + filename);
+                return ResponseEntity.notFound().build();
             }
-            System.out.println("File not found or not readable: " + filename);
-            return ResponseEntity.notFound().build();
         } catch (Exception e) {
-            System.out.println("Error serving file: " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+            System.out.println("Error serving file: " + filename + " - " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(null);
         }
     }
 }

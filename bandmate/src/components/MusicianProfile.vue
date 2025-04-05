@@ -12,7 +12,6 @@
         <p><strong>Genres:</strong> {{ profile?.genres || 'None listed' }}</p>
         <p><strong>Instruments:</strong> {{ profile?.instruments || 'None listed' }}</p>
         <button @click="startEditing" class="edit-btn">Edit Profile</button>
-        <!-- Add Start Conversation Section -->
         <div class="start-conversation">
           <h3>Start a New Conversation</h3>
           <input v-model="recipientUsername" type="text" placeholder="Enter username to message" />
@@ -22,18 +21,31 @@
         </div>
       </div>
       <div v-else class="edit-section">
-        <form @submit.prevent="saveProfile" enctype="multipart/form-data">
-          <label>Bio:</label>
-          <textarea v-model="editedProfile.bio"></textarea>
-          <label>Location:</label>
-          <input v-model="editedProfile.location" type="text" />
-          <label>Genres (space-separated):</label>
-          <input v-model="editedProfile.genres" type="text" />
-          <label>Instruments (space-separated):</label>
-          <input v-model="editedProfile.instruments" type="text" />
-          <label>Profile Picture:</label>
-          <input type="file" @change="onFileChange" accept="image/*" />
-          <img v-if="previewImage" :src="previewImage" alt="Preview" class="preview-pic" />
+        <form @submit.prevent="saveProfile" enctype="multipart/form-data" class="edit-form">
+          <div class="form-row">
+            <label>Bio:</label>
+            <textarea v-model="editedProfile.bio"></textarea>
+          </div>
+          <div class="form-row">
+            <label>Location:</label>
+            <input v-model="editedProfile.location" type="text" />
+          </div>
+          <div class="form-row">
+            <label>Genres (space-separated):</label>
+            <input v-model="editedProfile.genres" type="text" />
+          </div>
+          <div class="form-row">
+            <label>Instruments (space-separated):</label>
+            <input v-model="editedProfile.instruments" type="text" />
+          </div>
+          <div class="form-row">
+            <label>Profile Picture:</label>
+            <input type="file" @change="onFileChange" accept="image/*" />
+          </div>
+          <div class="form-row preview-row" v-if="previewImage">
+            <label>Preview:</label>
+            <img :src="previewImage" alt="Preview" class="preview-pic" />
+          </div>
           <div class="form-buttons">
             <button type="submit">Save</button>
             <button type="button" @click="cancelEditing">Cancel</button>
@@ -60,9 +72,9 @@ export default {
         instruments: []
       },
       previewImage: null,
-      recipientUsername: '', // New
-      initialMessage: '',   // New
-      error: ''             // New
+      recipientUsername: '',
+      initialMessage: '',
+      error: ''
     };
   },
   computed: {
@@ -70,6 +82,7 @@ export default {
       const url = this.profile?.profilePictureUrl
         ? `http://localhost:9000/users/uploads/${this.profile.profilePictureUrl}?t=${Date.now()}`
         : '';
+      console.log('Generated imageUrl:', url);
       return url;
     },
     heroBackgroundStyle() {
@@ -84,6 +97,7 @@ export default {
       const userId = localStorage.getItem('userId');
       if (!token || !userId) {
         this.profile = null;
+        console.log('No token or userId, profile not fetched');
         return;
       }
       try {
@@ -91,6 +105,7 @@ export default {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         this.profile = response.data;
+        console.log('Profile fetched:', this.profile);
       } catch (err) {
         console.error('Profile fetch failed:', err.response?.data || err.message);
         this.profile = null;
@@ -99,10 +114,10 @@ export default {
     startEditing() {
       this.editing = true;
       this.editedProfile = {
-        bio: this.profile.bio || '',
-        location: this.profile.location || '',
-        genres: this.profile.genres ? this.profile.genres.split(' ') : [],
-        instruments: this.profile.instruments ? this.profile.instruments.split(' ') : []
+        bio: this.profile?.bio || '',
+        location: this.profile?.location || '',
+        genres: this.profile?.genres ? this.profile.genres.split(' ') : [],
+        instruments: this.profile?.instruments ? this.profile.instruments.split(' ') : []
       };
       this.previewImage = null;
     },
@@ -123,7 +138,7 @@ export default {
         if (fileInput && fileInput.files[0]) {
           formData.append('profilePicture', fileInput.files[0]);
         } else {
-          formData.append('profilePictureUrl', this.profile.profilePictureUrl || '');
+          formData.append('profilePictureUrl', this.profile?.profilePictureUrl || '');
         }
 
         const response = await axios.put(
@@ -212,17 +227,135 @@ export default {
 </script>
 
 <style scoped>
-/* Existing styles */
+.profile-display {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+  color: var(--text);
+}
+
+.hero {
+  position: relative;
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.profile-pic {
+  max-width: 200px;
+  border-radius: 50%;
+}
+
+.hero-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  background-size: cover;
+  background-position: center;
+}
+
+.profile-details {
+  background: #222;
+  padding:  Historic Conversations20px;
+  border-radius: 5px;
+}
+
+.info-section p {
+  margin: 10px 0;
+}
+
+.edit-btn {
+  background-color: var(--primary);
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.edit-btn:hover {
+  background-color: var(--accent);
+}
+
+.edit-section {
+  padding: 20px;
+}
+
+.edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.form-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.form-row label {
+  width: 150px;
+  font-weight: bold;
+  text-align: right;
+}
+
+.form-row input,
+.form-row textarea {
+  flex: 1;
+  padding: 8px;
+  border: 1px solid #444;
+  border-radius: 4px;
+  background-color: #333;
+  color: var(--text);
+}
+
+.form-row textarea {
+  min-height: 60px;
+  resize: vertical;
+}
+
+.preview-row {
+  align-items: flex-start;
+}
+
+.preview-pic {
+  max-width: 100px;
+  margin-top: 5px;
+}
+
+.form-buttons {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.form-buttons button {
+  background-color: var(--primary);
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.form-buttons button:hover {
+  background-color: var(--accent);
+}
+
 .start-conversation {
   margin-top: 20px;
   padding: 10px;
   border: 1px solid #444;
   border-radius: 5px;
 }
+
 .start-conversation h3 {
   margin-bottom: 10px;
   color: var(--primary);
 }
+
 .start-conversation input {
   display: block;
   width: 100%;
@@ -233,6 +366,7 @@ export default {
   border: 1px solid #444;
   border-radius: 4px;
 }
+
 .start-conversation button {
   background-color: var(--primary);
   color: white;
@@ -240,9 +374,11 @@ export default {
   border: none;
   border-radius: 5px;
 }
+
 .start-conversation button:disabled {
   background-color: #555;
 }
+
 .error {
   color: var(--secondary);
   margin-top: 5px;

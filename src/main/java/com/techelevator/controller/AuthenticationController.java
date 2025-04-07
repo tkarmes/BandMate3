@@ -77,6 +77,10 @@ public class AuthenticationController {
             User createdUser = userDao.createUser(newUser);
             if (createdUser.getUserType() == User.UserType.Musician) {
                 MusicianProfile createdProfile = musicianProfileDao.createMusicianProfile(createdUser.getUserId());
+                if (newUser.getMusicianName() != null && !newUser.getMusicianName().isEmpty()) {
+                    createdProfile.setName(newUser.getMusicianName()); // Set musician name
+                    musicianProfileDao.updateMusicianProfile(createdUser.getUserId(), createdProfile);
+                }
                 return ResponseEntity.status(HttpStatus.CREATED).body(MusicianProfileDto.fromEntity(createdProfile));
             } else if (createdUser.getUserType() == User.UserType.VenueOwner) {
                 if (newUser.getVenueName() == null || newUser.getVenueName().isEmpty()) {

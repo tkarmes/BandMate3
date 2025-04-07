@@ -104,15 +104,16 @@ public class ProfileController {
     }
 
     @PutMapping(value = "/{userId}/musician-profile", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<MusicianProfile> updateMusicianProfile(
-            @PathVariable Long userId,
-            @RequestParam(value = "profilePicture", required = false) MultipartFile profilePicture,
-            @RequestParam(value = "bio", required = false) String bio,
-            @RequestParam(value = "location", required = false) String location,
-            @RequestParam(value = "genres", required = false) String genres,
-            @RequestParam(value = "instruments", required = false) String instruments,
-            @RequestParam(value = "profilePictureUrl", required = false) String profilePictureUrl,
-            Principal principal
+    public ResponseEntity<MusicianProfileDto> updateMusicianProfile( // Changed return type to MusicianProfileDto
+                                                                     @PathVariable Long userId,
+                                                                     @RequestParam(value = "profilePicture", required = false) MultipartFile profilePicture,
+                                                                     @RequestParam(value = "name", required = false) String name, // Added
+                                                                     @RequestParam(value = "bio", required = false) String bio,
+                                                                     @RequestParam(value = "location", required = false) String location,
+                                                                     @RequestParam(value = "genres", required = false) String genres,
+                                                                     @RequestParam(value = "instruments", required = false) String instruments,
+                                                                     @RequestParam(value = "profilePictureUrl", required = false) String profilePictureUrl,
+                                                                     Principal principal
     ) {
         try {
             User user = userDao.getUserById(userId);
@@ -120,6 +121,7 @@ public class ProfileController {
             if (!principal.getName().equals(user.getUsername())) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
 
             MusicianProfile profile = musicianProfileDao.getMusicianProfileByUserId(userId);
+            profile.setName(name != null ? name : profile.getName()); // Added
             profile.setBio(bio != null ? bio : profile.getBio());
             profile.setLocation(location != null ? location : profile.getLocation());
             profile.setGenres(genres != null ? genres : profile.getGenres());
@@ -144,7 +146,7 @@ public class ProfileController {
             }
 
             musicianProfileDao.updateMusicianProfile(userId, profile);
-            return ResponseEntity.ok(profile);
+            return ResponseEntity.ok(MusicianProfileDto.fromEntity(profile)); // Changed to DTO
         } catch (UserNotFoundException e) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User or profile not found", e);
         }
@@ -228,7 +230,7 @@ public class ProfileController {
         }
     }
 
-    @PreAuthorize("permitAll()") // Allow public access
+    @PreAuthorize("permitAll()")
     @GetMapping("/uploads/{filename:.+}")
     public ResponseEntity<Resource> serveFile(@PathVariable String filename) {
         try {

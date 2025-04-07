@@ -2,11 +2,12 @@
   <div class="profile-display">
     <div class="hero">
       <img v-if="imageUrl" :src="imageUrl" alt="Profile Picture" class="profile-pic" @error="onImageError" />
-      <h1>{{ profile ? profile.username : 'Loading...' }}</h1>
+      <h1>{{ profile ? profile.name : 'Loading...' }}</h1> <!-- Displays name -->
       <div class="hero-background" :style="heroBackgroundStyle"></div>
     </div>
     <div class="profile-details">
       <div v-if="!editing" class="info-section">
+        <p><strong>Name:</strong> {{ profile?.name || 'Not set' }}</p> <!-- Added for display -->
         <p><strong>Bio:</strong> {{ profile?.bio || 'No bio yet' }}</p>
         <p><strong>Location:</strong> {{ profile?.location || 'Not specified' }}</p>
         <p><strong>Genres:</strong> {{ profile?.genres || 'None listed' }}</p>
@@ -22,6 +23,10 @@
       </div>
       <div v-else class="edit-section">
         <form @submit.prevent="saveProfile" enctype="multipart/form-data" class="edit-form">
+          <div class="form-row">
+            <label>Name:</label>
+            <input v-model="editedProfile.name" type="text" /> <!-- Added for editing -->
+          </div>
           <div class="form-row">
             <label>Bio:</label>
             <textarea v-model="editedProfile.bio"></textarea>
@@ -60,16 +65,17 @@
 import axios from 'axios';
 
 export default {
-  name: 'ProfileDisplay',
+  name: 'MusicianProfile',
   data() {
     return {
       profile: null,
       editing: false,
       editedProfile: {
+        name: '', // Added
         bio: '',
         location: '',
-        genres: [],
-        instruments: []
+        genres: '',
+        instruments: ''
       },
       previewImage: null,
       recipientUsername: '',
@@ -114,10 +120,11 @@ export default {
     startEditing() {
       this.editing = true;
       this.editedProfile = {
+        name: this.profile?.name || '', // Added
         bio: this.profile?.bio || '',
         location: this.profile?.location || '',
-        genres: this.profile?.genres ? this.profile.genres.split(' ') : [],
-        instruments: this.profile?.instruments ? this.profile.instruments.split(' ') : []
+        genres: this.profile?.genres || '',
+        instruments: this.profile?.instruments || ''
       };
       this.previewImage = null;
     },
@@ -130,10 +137,11 @@ export default {
       }
       try {
         const formData = new FormData();
+        formData.append('name', this.editedProfile.name || ''); // Added
         formData.append('bio', this.editedProfile.bio || '');
         formData.append('location', this.editedProfile.location || '');
-        formData.append('genres', this.editedProfile.genres.join(' '));
-        formData.append('instruments', this.editedProfile.instruments.join(' '));
+        formData.append('genres', this.editedProfile.genres || '');
+        formData.append('instruments', this.editedProfile.instruments || '');
         const fileInput = document.querySelector('input[type="file"]');
         if (fileInput && fileInput.files[0]) {
           formData.append('profilePicture', fileInput.files[0]);
@@ -156,7 +164,7 @@ export default {
     },
     cancelEditing() {
       this.editing = false;
-      this.editedProfile = { bio: '', location: '', genres: [], instruments: [] };
+      this.editedProfile = { name: '', bio: '', location: '', genres: '', instruments: '' };
       this.previewImage = null;
     },
     onImageError() {
@@ -226,6 +234,7 @@ export default {
 };
 </script>
 
+<!-- Keep your existing <style scoped> section -->
 <style scoped>
 .profile-display {
   max-width: 800px;
@@ -258,7 +267,7 @@ export default {
 
 .profile-details {
   background: #222;
-  padding:  Historic Conversations20px;
+  padding: 20px;
   border-radius: 5px;
 }
 

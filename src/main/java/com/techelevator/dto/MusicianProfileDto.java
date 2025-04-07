@@ -5,6 +5,7 @@ import com.techelevator.model.MusicianProfile;
 public class MusicianProfileDto {
 
     private Long musicianProfileId;
+    private String name; // Added
     private String bio;
     private String location;
     private String genres;
@@ -15,6 +16,7 @@ public class MusicianProfileDto {
 
     public MusicianProfileDto() {
         // Initialize with default empty strings instead of nulls
+        this.name = ""; // Added
         this.bio = "";
         this.location = "";
         this.genres = "";
@@ -26,6 +28,7 @@ public class MusicianProfileDto {
 
     public MusicianProfileDto(Long musicianProfileId) {
         this.musicianProfileId = musicianProfileId;
+        this.name = ""; // Added
         this.bio = "";
         this.location = "";
         this.genres = "";
@@ -42,6 +45,7 @@ public class MusicianProfileDto {
         }
 
         MusicianProfileDto dto = new MusicianProfileDto(profile.getMusicianProfileId());
+        dto.setName(profile.getName() != null ? profile.getName() : ""); // Added
         dto.setBio(profile.getBio() != null ? profile.getBio() : "");
         dto.setLocation(profile.getLocation() != null ? profile.getLocation() : "");
         dto.setGenres(profile.getGenres() != null ? profile.getGenres() : "");
@@ -52,13 +56,21 @@ public class MusicianProfileDto {
         return dto;
     }
 
-    // Getters and Setters...
+    // Getters and Setters
     public Long getMusicianProfileId() {
         return musicianProfileId;
     }
 
     public void setMusicianProfileId(Long musicianProfileId) {
         this.musicianProfileId = musicianProfileId;
+    }
+
+    public String getName() { // Added
+        return name;
+    }
+
+    public void setName(String name) { // Added
+        this.name = name;
     }
 
     public String getBio() {

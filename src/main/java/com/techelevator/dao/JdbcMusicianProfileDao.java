@@ -20,7 +20,8 @@ public class JdbcMusicianProfileDao implements MusicianProfileDao {
 
     @Override
     public MusicianProfile getMusicianProfileByUserId(Long userId) throws DaoException {
-        String sql = "SELECT mp.*, u.username " + // Added username from users table
+        String sql = "SELECT mp.musician_profile_id, mp.user_id, mp.name, mp.bio, mp.location, mp.genres, mp.instruments, " +
+                "mp.profile_picture_url, mp.created_at, mp.updated_at, u.username " +
                 "FROM musician_profiles mp " +
                 "JOIN users u ON mp.user_id = u.user_id " +
                 "WHERE mp.user_id = ?";
@@ -34,8 +35,8 @@ public class JdbcMusicianProfileDao implements MusicianProfileDao {
 
     @Override
     public MusicianProfile createMusicianProfile(Long userId) throws DaoException {
-        String sql = "INSERT INTO musician_profiles (user_id, created_at) " +
-                "VALUES (?, CURRENT_TIMESTAMP) RETURNING musician_profile_id";
+        String sql = "INSERT INTO musician_profiles (user_id, name, created_at) " +
+                "VALUES (?, 'New Musician', CURRENT_TIMESTAMP) RETURNING musician_profile_id";
         Long profileId = jdbcTemplate.queryForObject(sql, Long.class, userId);
         if (profileId == null) {
             throw new DaoException("Failed to create musician profile for user ID: " + userId);
@@ -45,9 +46,12 @@ public class JdbcMusicianProfileDao implements MusicianProfileDao {
 
     @Override
     public void updateMusicianProfile(Long userId, MusicianProfile profile) throws DaoException {
-        String sql = "UPDATE musician_profiles SET bio = ?, location = ?, genres = ?, instruments = ?, " +
-                "profile_picture_url = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?";
+        String sql = "UPDATE musician_profiles " +
+                "SET name = ?, bio = ?, location = ?, genres = ?, instruments = ?, profile_picture_url = ?, " +
+                "updated_at = CURRENT_TIMESTAMP " +
+                "WHERE user_id = ?";
         int rowsAffected = jdbcTemplate.update(sql,
+                profile.getName() != null ? profile.getName() : "",
                 profile.getBio() != null ? profile.getBio() : "",
                 profile.getLocation() != null ? profile.getLocation() : "",
                 profile.getGenres() != null ? profile.getGenres() : "",
@@ -93,9 +97,10 @@ public class JdbcMusicianProfileDao implements MusicianProfileDao {
 
         User user = new User();
         user.setUserId(rs.getLong("user_id"));
-        user.setUsername(rs.getString("username")); // Added username mapping
+        user.setUsername(rs.getString("username"));
         profile.setUser(user);
 
+        profile.setName(rs.getString("name") != null ? rs.getString("name") : ""); // Added
         profile.setBio(rs.getString("bio") != null ? rs.getString("bio") : "");
         profile.setLocation(rs.getString("location") != null ? rs.getString("location") : "");
         profile.setGenres(rs.getString("genres") != null ? rs.getString("genres") : "");

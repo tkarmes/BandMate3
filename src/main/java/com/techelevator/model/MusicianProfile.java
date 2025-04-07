@@ -16,6 +16,9 @@ public class MusicianProfile {
     @JoinColumn(name = "user_id", referencedColumnName = "user_id")
     private User user;
 
+    @Column(name = "name") // New field
+    private String name;
+
     @Column(name = "bio")
     private String bio;
 
@@ -55,6 +58,14 @@ public class MusicianProfile {
 
     public void setUser(User user) {
         this.user = user;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
     }
 
     public String getBio() {
@@ -130,6 +141,7 @@ public class MusicianProfile {
     public String toString() {
         return "MusicianProfile{" +
                 "musicianProfileId=" + musicianProfileId +
+                ", name='" + name + '\'' +
                 ", bio='" + bio + '\'' +
                 ", location='" + location + '\'' +
                 ", genres='" + genres + '\'' +

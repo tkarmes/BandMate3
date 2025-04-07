@@ -4,12 +4,6 @@ import javax.validation.constraints.NotEmpty;
 import javax.validation.constraints.Pattern;
 import javax.validation.constraints.Email;
 
-/*
-    The acronym DTO is being used for "data transfer object". It means that this type of class is specifically
-    created to transfer data between the client and the server. For example, CredentialsDto represents the data a client must
-    pass to the server for a login endpoint, and TokenDto represents the object that's returned from the server
-    to the client from a login endpoint.
- */
 public class RegisterUserDto {
 
     @NotEmpty(message = "Username cannot be empty.")
@@ -33,62 +27,27 @@ public class RegisterUserDto {
     @NotEmpty(message = "Email cannot be empty.")
     private String email;
 
-    // Venue name is required only for venue owners, but this validation can't be done here due to its conditional nature
+    // Venue name for VenueOwner (required only for them)
     private String venueName;
 
-    public String getUsername() {
-        return username;
-    }
+    // Musician name for Musician (optional, added now)
+    private String musicianName;
 
-    public void setUsername(String username) {
-        this.username = username;
-    }
-
-    public String getPassword() {
-        return password;
-    }
-
-    public void setPassword(String password) {
-        this.password = password;
-    }
-
-    public String getConfirmPassword() {
-        return confirmPassword;
-    }
-
-    public void setConfirmPassword(String confirmPassword) {
-        this.confirmPassword = confirmPassword;
-    }
-
-    public String getUserType() {
-        return userType;
-    }
-
-    public void setUserType(String userType) {
-        this.userType = userType;
-    }
-
-    public String getRole() {
-        return role;
-    }
-
-    public void setRole(String role) {
-        this.role = role;
-    }
-
-    public String getEmail() {
-        return email;
-    }
-
-    public void setEmail(String email) {
-        this.email = email;
-    }
-
-    public String getVenueName() {
-        return venueName;
-    }
-
-    public void setVenueName(String venueName) {
-        this.venueName = venueName;
-    }
+    // Getters and Setters
+    public String getUsername() { return username; }
+    public void setUsername(String username) { this.username = username; }
+    public String getPassword() { return password; }
+    public void setPassword(String password) { this.password = password; }
+    public String getConfirmPassword() { return confirmPassword; }
+    public void setConfirmPassword(String confirmPassword) { this.confirmPassword = confirmPassword; }
+    public String getUserType() { return userType; }
+    public void setUserType(String userType) { this.userType = userType; }
+    public String getRole() { return role; }
+    public void setRole(String role) { this.role = role; }
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
+    public String getVenueName() { return venueName; }
+    public void setVenueName(String venueName) { this.venueName = venueName; }
+    public String getMusicianName() { return musicianName; } // Added
+    public void setMusicianName(String musicianName) { this.musicianName = musicianName; } // Added
 }

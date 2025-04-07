@@ -26,6 +26,7 @@ CREATE TABLE users (
 CREATE TABLE musician_profiles (
     musician_profile_id SERIAL PRIMARY KEY,
     user_id INT REFERENCES users(user_id) ON DELETE CASCADE,
+    name VARCHAR(100), -- Added
     bio TEXT,
     location VARCHAR(100),
     genres TEXT,

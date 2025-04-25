@@ -2,12 +2,13 @@
   <div class="profile-display">
     <div class="hero">
       <img v-if="imageUrl" :src="imageUrl" alt="Profile Picture" class="profile-pic" @error="onImageError" />
-      <h1>{{ profile ? profile.name : 'Loading...' }}</h1> <!-- Displays name -->
+      <img v-else src="/assets/musician-placeholder.png" alt="Default Musician" class="profile-pic" @error="onFallbackError" />
+      <h1>{{ profile ? profile.name : 'Loading...' }}</h1>
       <div class="hero-background" :style="heroBackgroundStyle"></div>
     </div>
     <div class="profile-details">
       <div v-if="!editing" class="info-section">
-        <p><strong>Name:</strong> {{ profile?.name || 'Not set' }}</p> <!-- Added for display -->
+        <p><strong>Name:</strong> {{ profile?.name || 'Not set' }}</p>
         <p><strong>Bio:</strong> {{ profile?.bio || 'No bio yet' }}</p>
         <p><strong>Location:</strong> {{ profile?.location || 'Not specified' }}</p>
         <p><strong>Genres:</strong> {{ profile?.genres || 'None listed' }}</p>
@@ -25,7 +26,7 @@
         <form @submit.prevent="saveProfile" enctype="multipart/form-data" class="edit-form">
           <div class="form-row">
             <label>Name:</label>
-            <input v-model="editedProfile.name" type="text" /> <!-- Added for editing -->
+            <input v-model="editedProfile.name" type="text" />
           </div>
           <div class="form-row">
             <label>Bio:</label>
@@ -71,7 +72,7 @@ export default {
       profile: null,
       editing: false,
       editedProfile: {
-        name: '', // Added
+        name: '',
         bio: '',
         location: '',
         genres: '',
@@ -120,7 +121,7 @@ export default {
     startEditing() {
       this.editing = true;
       this.editedProfile = {
-        name: this.profile?.name || '', // Added
+        name: this.profile?.name || '',
         bio: this.profile?.bio || '',
         location: this.profile?.location || '',
         genres: this.profile?.genres || '',
@@ -132,12 +133,13 @@ export default {
       const token = localStorage.getItem('token');
       const userId = localStorage.getItem('userId');
       if (!token || !userId) {
+        console.error('No token or userId, aborting save');
         this.editing = false;
         return;
       }
       try {
         const formData = new FormData();
-        formData.append('name', this.editedProfile.name || ''); // Added
+        formData.append('name', this.editedProfile.name || '');
         formData.append('bio', this.editedProfile.bio || '');
         formData.append('location', this.editedProfile.location || '');
         formData.append('genres', this.editedProfile.genres || '');
@@ -145,20 +147,38 @@ export default {
         const fileInput = document.querySelector('input[type="file"]');
         if (fileInput && fileInput.files[0]) {
           formData.append('profilePicture', fileInput.files[0]);
+          console.log('File selected:', fileInput.files[0].name, fileInput.files[0].size, 'bytes');
         } else {
           formData.append('profilePictureUrl', this.profile?.profilePictureUrl || '');
+          console.log('No new file selected, using existing URL:', this.profile?.profilePictureUrl);
         }
 
+        // Log FormData contents
+        for (let [key, value] of formData.entries()) {
+          console.log(`FormData: ${key}=${value instanceof File ? value.name : value}`);
+        }
+
+        console.log('Sending PUT request to /users/${userId}/musician-profile');
         const response = await axios.put(
           `http://localhost:9000/users/${userId}/musician-profile`,
           formData,
-          { headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'multipart/form-data' } }
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'multipart/form-data'
+            }
+          }
         );
+        console.log('Response:', response.status, response.data);
         this.profile = response.data;
         this.editing = false;
         this.previewImage = null;
       } catch (err) {
-        console.error('Profile update failed:', err.response?.status, err.response?.data || err.message);
+        console.error('Profile update failed:', {
+          status: err.response?.status,
+          data: err.response?.data,
+          message: err.message
+        });
         this.editing = false;
       }
     },
@@ -168,12 +188,19 @@ export default {
       this.previewImage = null;
     },
     onImageError() {
-      console.log('Image failed to load:', this.imageUrl);
+      console.log('Profile image failed to load:', this.imageUrl);
+    },
+    onFallbackError() {
+      console.log('Fallback image failed to load: /assets/musician-placeholder.png');
     },
     onFileChange(event) {
       const file = event.target.files[0];
       if (file) {
         this.previewImage = URL.createObjectURL(file);
+        console.log('Preview image set:', file.name);
+      } else {
+        this.previewImage = null;
+        console.log('No file selected for preview');
       }
     },
     async startConversation() {
@@ -192,7 +219,6 @@ export default {
         );
         console.log("Response:", userResponse.data);
         const recipientId = userResponse.data.userId;
-
         const convoPayload = {
           participants: [
             { userId: Number(userId) },
@@ -205,7 +231,6 @@ export default {
           { headers: { 'Authorization': `Bearer ${token}` } }
         );
         const conversationId = convoResponse.data.conversationId;
-
         const messagePayload = {
           conversationId: conversationId,
           senderId: Number(userId),
@@ -218,7 +243,6 @@ export default {
           messagePayload,
           { headers: { 'Authorization': `Bearer ${token}` } }
         );
-
         this.$router.push({ name: 'ConversationList' });
         this.recipientUsername = '';
         this.initialMessage = '';
@@ -235,12 +259,14 @@ export default {
 </script>
 
 <style scoped>
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
+
 .profile-display {
   max-width: 900px;
   margin: 0 auto;
   padding: 30px;
   color: var(--text, #ffffff);
-  font-family: 'Arial', sans-serif;
+  font-family: 'Roboto', sans-serif;
 }
 
 .hero {
@@ -250,13 +276,17 @@ export default {
   padding: 20px;
   border-radius: 10px;
   overflow: hidden;
+  background: #2a2a2a;
 }
 
 .profile-pic {
-  max-width: 150px;
+  width: 250px;
+  height: 250px;
   border-radius: 50%;
   border: 4px solid #fff;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  object-fit: cover;
+  background: #ffffff; /* Hide transparency */
 }
 
 .hero h1 {

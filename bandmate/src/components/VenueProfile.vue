@@ -304,156 +304,220 @@
   </script>
   
   <style scoped>
-  /* Existing styles */
-  .venue-profile {
-    max-width: 800px;
-    margin: 0 auto;
-    padding: 20px;
-    color: var(--text);
-  }
-  
-  .hero {
-    position: relative;
-    text-align: center;
-    margin-bottom: 20px;
-  }
-  
-  .profile-pic {
-    max-width: 200px;
-    border-radius: 50%;
-  }
-  
-  .hero-background {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    z-index: -1;
-    background-size: cover;
-    background-position: center;
-  }
-  
-  .profile-details {
-    background: #222;
-    padding: 20px;
-    border-radius: 5px;
-  }
-  
-  .info-section p {
-    margin: 10px 0;
-  }
-  
-  .edit-btn {
-    background-color: var(--primary);
-    color: white;
-    padding: 10px 20px;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-  }
-  
-  .edit-btn:hover {
-    background-color: var(--accent);
-  }
-  
-  .edit-section {
-    padding: 20px;
-  }
-  
-  .edit-form {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-  }
-  
-  .form-row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-  
-  .form-row label {
-    width: 150px;
-    font-weight: bold;
-    text-align: right;
-  }
-  
-  .form-row input,
-  .form-row textarea {
-    flex: 1;
-    padding: 8px;
-    border: 1px solid #444;
-    border-radius: 4px;
-    background-color: #333;
-    color: var(--text);
-  }
-  
-  .form-row textarea {
-    min-height: 60px;
-    resize: vertical;
-  }
-  
-  .preview-row {
-    align-items: flex-start;
-  }
-  
-  .preview-pic {
-    max-width: 100px;
-    margin-top: 5px;
-  }
-  
-  .form-buttons {
-    display: flex;
-    gap: 10px;
-    justify-content: flex-end;
-  }
-  
-  .form-buttons button {
-    background-color: var(--primary);
-    color: white;
-    padding: 10px 20px;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-  }
-  
-  .form-buttons button:hover {
-    background-color: var(--accent);
-  }
-  
-  .start-conversation {
-    margin-top: 20px;
-    padding: 10px;
-    border: 1px solid #444;
-    border-radius: 5px;
-  }
-  
-  .start-conversation h3 {
-    margin-bottom: 10px;
-  }
-  
-  .start-conversation input {
-    display: block;
-    width: 100%;
-    margin-bottom: 10px;
-    padding: 5px;
-  }
-  
-  .start-conversation button {
-    background-color: var(--primary);
-    color: white;
-    padding: 5px 10px;
-    border: none;
-    border-radius: 5px;
-  }
-  
-  .start-conversation button:disabled {
-    background-color: #555;
-  }
-  
-  .error {
-    color: var(--secondary);
-    margin-top: 5px;
-  }
-  </style>
+.venue-profile {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 30px;
+  color: var(--text, #ffffff);
+  font-family: 'Arial', sans-serif;
+}
+
+.hero {
+  position: relative;
+  text-align: center;
+  margin-bottom: 30px;
+  padding: 20px;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.profile-pic {
+  max-width: 150px;
+  border-radius: 50%;
+  border: 4px solid #fff;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.hero h1 {
+  font-size: 2.5rem;
+  margin: 10px 0;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.hero-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  background-size: cover;
+  background-position: center;
+  opacity: 0.3;
+  filter: blur(5px);
+}
+
+.hero-background::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.7));
+}
+
+.profile-details {
+  background: #1e1e1e;
+  padding: 25px;
+  border-radius: 12px;
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+  transition: transform 0.3s ease;
+}
+
+.profile-details:hover {
+  transform: translateY(-5px);
+}
+
+.info-section p {
+  margin: 12px 0;
+  font-size: 1.1rem;
+}
+
+.edit-btn {
+  background: linear-gradient(45deg, var(--primary, #0288d1), var(--accent, #4fc3f7));
+  color: white;
+  padding: 12px 24px;
+  border: none;
+  border-radius: 25px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.edit-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.edit-section {
+  padding: 25px;
+}
+
+.edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.form-row {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.form-row label {
+  width: 150px;
+  font-weight: bold;
+  text-align: right;
+  color: var(--primary, #0288d1);
+}
+
+.form-row input,
+.form-row textarea {
+  flex: 1;
+  padding: 10px;
+  border: 1px solid #555;
+  border-radius: 6px;
+  background-color: #2a2a2a;
+  color: #fff;
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+.form-row input:focus,
+.form-row textarea:focus {
+  border-color: var(--accent, #4fc3f7);
+  box-shadow: 0 0 5px rgba(79, 195, 247, 0.5);
+  outline: none;
+}
+
+.form-row textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+
+.preview-row {
+  align-items: flex-start;
+}
+
+.preview-pic {
+  max-width: 120px;
+  margin-top: 8px;
+  border-radius: 8px;
+}
+
+.form-buttons {
+  display: flex;
+  gap: 15px;
+  justify-content: flex-end;
+}
+
+.form-buttons button {
+  background: linear-gradient(45deg, var(--primary, #0288d1), var(--accent, #4fc3f7));
+  color: white;
+  padding: 12px 24px;
+  border: none;
+  border-radius: 25px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.form-buttons button:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.start-conversation {
+  margin-top: 25px;
+  padding: 15px;
+  border: 1px solid #555;
+  border-radius: 8px;
+  background: #2a2a2a;
+}
+
+.start-conversation h3 {
+  margin-bottom: 12px;
+  color: var(--primary, #0288d1);
+}
+
+.start-conversation input {
+  display: block;
+  width: 100%;
+  margin-bottom: 12px;
+  padding: 8px;
+  background-color: #333;
+  color: #fff;
+  border: 1px solid #555;
+  border-radius: 6px;
+  transition: border-color 0.3s;
+}
+
+.start-conversation input:focus {
+  border-color: var(--accent, #4fc3f7);
+  outline: none;
+}
+
+.start-conversation button {
+  background: linear-gradient(45deg, var(--primary, #0288d1), var(--accent, #4fc3f7));
+  color: white;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 25px;
+  transition: transform 0.2s;
+}
+
+.start-conversation button:hover {
+  transform: scale(1.05);
+}
+
+.start-conversation button:disabled {
+  background: #555;
+  cursor: not-allowed;
+}
+
+.error {
+  color: var(--secondary, #ff5252);
+  margin-top: 8px;
+}
+</style>

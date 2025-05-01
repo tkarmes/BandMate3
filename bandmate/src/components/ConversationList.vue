@@ -1,13 +1,14 @@
 <template>
   <div class="conversation">
     <h2>Your Conversations</h2>
-    <ul v-if="conversations.length" class="convo-list">
+    <ul v-if="conversations.length && !loading" class="convo-list">
       <li v-for="convo in conversations" :key="convo.conversationId" 
           @click="selectConversation(convo.conversationId)"
           :class="{ active: convo.conversationId === conversationId }">
         {{ getParticipantName(convo) }} - {{ formatTimestamp(convo.createdAt) }}
       </li>
     </ul>
+    <p v-else-if="loading">Loading conversations...</p>
     <p v-else>No conversations yet.</p>
     <h3 v-if="conversationId">Messages with {{ getParticipantName(conversations.find(c => c.conversationId === conversationId)) }}</h3>
     <ul v-if="messages.length && !loading" class="message-list">
@@ -75,10 +76,12 @@ export default {
       this.ws.onopen = () => console.log('WebSocket connected');
       this.ws.onmessage = (event) => {
         const data = JSON.parse(event.data);
-        console.log("WebSocket received:", data);
+        console.log('WebSocket received:', data);
         if (data.type === 'TYPING' && data.conversationId === Number(this.conversationId)) {
           this.isTyping = true;
           setTimeout(() => this.isTyping = false, 3000);
+        } else if (data.type === 'NEW_CONVERSATION') {
+          this.fetchConversations();
         } else if (data.conversationId === Number(this.conversationId)) {
           this.messages.push(data);
           this.$nextTick(() => {
@@ -97,23 +100,39 @@ export default {
         return;
       }
       try {
+        this.loading = true;
         const response = await axios.get(
           'http://localhost:9000/messaging/conversations',
           { headers: { 'Authorization': `Bearer ${token}` } }
         );
         console.log('Conversations response:', response.data);
         this.conversations = response.data || [];
-        // Fetch users for participants
+        // Extract user IDs from participantNames or messages
         const participantIds = response.data
-          .filter(c => c.participants)
-          .flatMap(c => c.participants.map(p => p.userId))
+          .filter(c => c.participantNames || c.messages)
+          .flatMap(c => {
+            if (c.participantNames) {
+              // Assume participantNames contains usernames; find corresponding user IDs
+              return c.participantNames.map(name => {
+                const user = Object.values(this.users).find(u => u.username === name);
+                return user ? user.userId : null;
+              }).filter(id => id !== null && id !== this.userId);
+            }
+            if (c.messages) {
+              return c.messages.map(m => [m.senderId, m.receiverId]).flat();
+            }
+            return [];
+          })
           .filter(id => id !== this.userId && id != null);
         const uniqueIds = [...new Set(participantIds)];
+        console.log('Fetching users for IDs:', uniqueIds);
         await this.fetchUsersByIds(uniqueIds);
       } catch (err) {
         this.error = err.response?.data?.message || 'Failed to load conversations';
         console.error('Fetch conversations failed:', err.response?.data || err.message);
         this.conversations = [];
+      } finally {
+        this.loading = false;
       }
     },
     async fetchMessages() {
@@ -136,6 +155,11 @@ export default {
             ? response.data[0].receiverId 
             : response.data[0].senderId;
           await this.fetchUsers(response.data);
+          // Update conversation with fetched messages
+          const convo = this.conversations.find(c => c.conversationId === Number(this.conversationId));
+          if (convo) {
+            convo.messages = response.data;
+          }
         }
       } catch (err) {
         this.error = err.response?.data?.message || 'Failed to load messages';
@@ -149,12 +173,12 @@ export default {
       const token = localStorage.getItem('token');
       if (!token || !this.userId || !this.newMessage || !this.conversationId) {
         this.error = 'Missing required fields';
-        console.log("Missing fields:", { token, userId: this.userId, newMessage: this.newMessage, conversationId: this.conversationId });
+        console.log('Missing fields:', { token, userId: this.userId, newMessage: this.newMessage, conversationId: this.conversationId });
         return;
       }
       this.sending = true;
       this.error = '';
-      console.log("Sending message:", this.newMessage, "to convo ID:", this.conversationId);
+      console.log('Sending message:', this.newMessage, 'to convo ID:', this.conversationId);
       try {
         const message = {
           conversationId: Number(this.conversationId),
@@ -163,20 +187,20 @@ export default {
           content: this.newMessage,
           sentAt: new Date().toISOString()
         };
-        console.log("Message payload:", message);
+        console.log('Message payload:', message);
         if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-          console.log("Sending via WebSocket");
+          console.log('Sending via WebSocket');
           this.ws.send(JSON.stringify(message));
           this.messages.push(message);
           this.newMessage = '';
         } else {
-          console.log("WebSocket unavailable, using POST");
+          console.log('WebSocket unavailable, using POST');
           const response = await axios.post(
             'http://localhost:9000/messaging/messages',
             message,
             { headers: { 'Authorization': `Bearer ${token}` } }
           );
-          console.log("POST response:", response.data);
+          console.log('POST response:', response.data);
           this.messages.push(response.data);
           this.newMessage = '';
         }
@@ -252,9 +276,42 @@ export default {
       return senderId === this.userId ? '/assets/musician-placeholder.png' : '/assets/venue-placeholder.png';
     },
     getParticipantName(convo) {
-      if (!convo || !convo.participants) return 'Unknown';
-      const otherParticipant = convo.participants.find(p => p.userId !== this.userId);
-      return otherParticipant ? (this.users[otherParticipant.userId]?.username || 'Unknown') : 'Unknown';
+      if (!convo) {
+        console.warn('No conversation provided');
+        return 'Unknown';
+      }
+      console.log('Processing participantNames for convo:', convo.participantNames);
+      // Try participantNames first (assuming it contains usernames)
+      if (convo.participantNames && convo.participantNames.length) {
+        // Filter out the current user's username
+        const currentUser = this.users[this.userId];
+        const otherNames = convo.participantNames.filter(name => name !== currentUser?.username);
+        if (otherNames.length) {
+          return otherNames[0]; // Use the first non-self username
+        }
+      }
+      // Fallback to participants if available
+      if (convo.participants) {
+        const otherParticipant = convo.participants.find(p => p.userId !== this.userId);
+        if (otherParticipant) {
+          const username = this.users[otherParticipant.userId]?.username;
+          if (username) return username;
+          console.warn(`No username for user ${otherParticipant.userId}:`, this.users[otherParticipant.userId]);
+          return `User ${otherParticipant.userId}`;
+        }
+      }
+      // Fallback to messages if available
+      if (convo.messages && convo.messages.length) {
+        const otherId = convo.messages[0].senderId === this.userId
+          ? convo.messages[0].receiverId
+          : convo.messages[0].senderId;
+        const username = this.users[otherId]?.username;
+        if (username) return username;
+        console.warn(`No username for user ${otherId}:`, this.users[otherId]);
+        return `User ${otherId}`;
+      }
+      console.warn('No participant data found for convo:', convo);
+      return 'Unknown';
     },
     async fetchUsers(messages) {
       const token = localStorage.getItem('token');
@@ -287,6 +344,7 @@ export default {
             console.log(`Fetched user ${userId}:`, response.data);
           } catch (err) {
             console.error(`Failed to fetch user ${userId}:`, err);
+            this.users[userId] = { userId }; // Fallback
           }
         }
       }

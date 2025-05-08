@@ -1,41 +1,43 @@
 <template>
   <div id="app">
     <h1>Bandmate</h1>
-    <LoginForm v-if="!loggedIn" @login-success="onLoginSuccess" />
-    <div v-if="loggedIn" class="content">
-      <ProfileDisplay v-if="userType === 'Musician'" ref="profileDisplay" />
-      <VenueProfile v-if="userType === 'VenueOwner'" ref="venueProfile" />
-      <ConversationList />
-      <button v-if="loggedIn" @click="logout" class="logout-btn">Logout</button>
-    </div>
+    <nav v-if="loggedIn" class="nav">
+      <router-link to="/users">Browse Users</router-link>
+      <router-link to="/conversations">Conversations</router-link>
+      <router-link :to="profileRoute">My Profile</router-link>
+      <button @click="logout" class="logout-btn">Logout</button>
+    </nav>
+    <router-view
+      @login-success="onLoginSuccess"
+      :loggedIn="loggedIn"
+      :userType="userType"
+      @update:profile="updateProfile"
+    />
   </div>
 </template>
 
 <script>
-import LoginForm from './components/LoginForm.vue';
-import ProfileDisplay from './components/MusicianProfile.vue';
-import VenueProfile from './components/VenueProfile.vue';
-import ConversationList from './components/ConversationList.vue';
 import axios from 'axios';
 
 export default {
   name: 'App',
-  components: {
-    LoginForm,
-    ProfileDisplay,
-    VenueProfile,
-    ConversationList
-  },
   data() {
     return {
-      loggedIn: false,
-      userType: null
+      loggedIn: !!localStorage.getItem('token'),
+      userType: null,
+      userId: localStorage.getItem('userId')
     };
   },
+  computed: {
+    profileRoute() {
+      if (!this.loggedIn || !this.userId || !this.userType) return '/';
+      return this.userType === 'Musician'
+        ? { name: 'MusicianProfile', params: { userId: this.userId } }
+        : { name: 'VenueProfile', params: { userId: this.userId } };
+    }
+  },
   created() {
-    const token = localStorage.getItem('token');
-    if (token && !window.performance.navigation.type === 0) {
-      this.loggedIn = true;
+    if (this.loggedIn) {
       this.fetchUserType();
     }
   },
@@ -49,28 +51,27 @@ export default {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         this.userType = response.data.userType;
-        this.$nextTick(() => {
-          if (this.userType === 'Musician' && this.$refs.profileDisplay) {
-            this.$refs.profileDisplay.fetchProfile();
-          } else if (this.userType === 'VenueOwner' && this.$refs.venueProfile) {
-            this.$refs.venueProfile.fetchProfile();
-          }
-        });
       } catch (err) {
         console.error('User type fetch failed:', err.response?.data || err.message);
+        this.logout(); // Log out if token is invalid
       }
     },
     onLoginSuccess() {
-      console.log('Login successful event received');
+      console.log('Login successful');
       this.loggedIn = true;
+      this.userId = localStorage.getItem('userId');
       this.fetchUserType();
     },
     logout() {
       localStorage.clear();
       this.loggedIn = false;
       this.userType = null;
-      if (this.$refs.profileDisplay) this.$refs.profileDisplay.profile = null;
-      if (this.$refs.venueProfile) this.$refs.venueProfile.profile = null;
+      this.userId = null;
+      this.$router.push({ name: 'Login' });
+    },
+    updateProfile() {
+      // Refresh profile if needed
+      this.fetchUserType();
     }
   }
 };
@@ -112,25 +113,33 @@ h1 {
   text-transform: uppercase;
 }
 
-.content {
+.nav {
   display: flex;
-  flex-direction: column;
-  gap: 20px;
-  width: 100%;
+  justify-content: center;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.nav a {
+  color: var(--primary);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.nav a:hover {
+  color: var(--accent);
 }
 
 .logout-btn {
   background-color: var(--secondary);
   color: var(--text);
-  padding: 10px 20px;
+  padding: 8px 16px;
   border: none;
   border-radius: 5px;
   cursor: pointer;
-  font-size: 16px;
-  margin-top: 20px;
+  font-size: 14px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
   transition: all 0.3s ease;
-  align-self: center; /* Center it horizontally */
 }
 
 .logout-btn:hover {

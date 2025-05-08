@@ -23,7 +23,9 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.Principal;
 import java.util.Arrays;
+import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @RestController
 @CrossOrigin
@@ -165,6 +167,43 @@ public class ProfileController {
         }
     }
 
+    @GetMapping("/list")
+    public ResponseEntity<List<UserDto>> getUsersByType(
+            @RequestParam(value = "userType", required = true) String userType,
+            @RequestParam(value = "page", defaultValue = "0") int page,
+            @RequestParam(value = "size", defaultValue = "10") int size
+    ) {
+        try {
+            User.UserType type = User.UserType.valueOf(userType);
+            List<User> users = userDao.getUsersByType(type, page, size);
+            List<UserDto> dtos = users.stream().map(user -> {
+                UserDto dto = UserDto.fromUser(user);
+                try {
+                    if (user.getUserType() == User.UserType.Musician) {
+                        MusicianProfile profile = musicianProfileDao.getMusicianProfileByUserId(user.getUserId());
+                        if (profile != null) {
+                            dto.setProfilePictureUrl(profile.getProfilePictureUrl());
+                        }
+                    } else if (user.getUserType() == User.UserType.VenueOwner) {
+                        VenueProfile profile = venueProfileDao.getVenueProfileByUserId(user.getUserId());
+                        if (profile != null) {
+                            dto.setProfilePictureUrl(profile.getProfilePictureUrl());
+                        }
+                    }
+                } catch (Exception e) {
+                    // Log error but continue with null profilePictureUrl
+                    System.err.println("Error fetching profile for user " + user.getUserId() + ": " + e.getMessage());
+                }
+                return dto;
+            }).collect(Collectors.toList());
+            return ResponseEntity.ok(dtos);
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid userType: " + userType);
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to fetch users", e);
+        }
+    }
+
     @PutMapping(value = "/{userId}/venue-profile", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<VenueProfile> updateVenueProfile(
             @PathVariable Long userId,
@@ -229,6 +268,8 @@ public class ProfileController {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User or profile not found", e);
         }
     }
+
+
 
     @PreAuthorize("permitAll()")
     @GetMapping("/uploads/{filename:.+}")

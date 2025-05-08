@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -28,12 +29,36 @@ public class JdbcUserDao implements UserDao {
 
     private final JdbcTemplate jdbcTemplate;
     private final MusicianProfileDao musicianProfileDao;
-    private final VenueProfileDao venueProfileDao; // Include VenueProfileDao if not already added
+    private final VenueProfileDao venueProfileDao;
 
     public JdbcUserDao(JdbcTemplate jdbcTemplate, MusicianProfileDao musicianProfileDao, VenueProfileDao venueProfileDao) {
         this.jdbcTemplate = jdbcTemplate;
         this.musicianProfileDao = musicianProfileDao;
         this.venueProfileDao = venueProfileDao;
+    }
+
+    @Override
+    public List<User> getUsersByType(User.UserType userType, int page, int size) {
+        List<User> users = new ArrayList<>();
+        String sql = "SELECT user_id, username, email, password_hash, user_type, created_at " +
+                "FROM users " +
+                "WHERE user_type = ? " +
+                "ORDER BY username " +
+                "LIMIT ? OFFSET ?";
+        try {
+            SqlRowSet results = jdbcTemplate.queryForRowSet(
+                    sql,
+                    userType != null ? userType.toString() : null,
+                    size,
+                    page * size
+            );
+            while (results.next()) {
+                users.add(mapRowToUser(results));
+            }
+        } catch (CannotGetJdbcConnectionException e) {
+            throw new DaoException("Unable to connect to server or database", e);
+        }
+        return users;
     }
 
     @Override

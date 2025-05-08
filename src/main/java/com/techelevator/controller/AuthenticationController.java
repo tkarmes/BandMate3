@@ -25,7 +25,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 @RestController
-@CrossOrigin(origins = "http://localhost:3000")
+@CrossOrigin(origins = "http://localhost:3000") // Updated for Vite port
 @RequestMapping("/auth")
 public class AuthenticationController {
 
@@ -46,22 +46,27 @@ public class AuthenticationController {
 
     @PostMapping("/login")
     public ResponseEntity<LoginResponseDto> login(@Valid @RequestBody LoginDto loginDto) {
-        UsernamePasswordAuthenticationToken authenticationToken =
-                new UsernamePasswordAuthenticationToken(loginDto.getUsername(), loginDto.getPassword());
-        Authentication authentication = authenticationManagerBuilder.getObject().authenticate(authenticationToken);
-        SecurityContextHolder.getContext().setAuthentication(authentication);
-        String jwt = tokenProvider.createToken(authentication, false);
-
-        User user;
         try {
-            user = userDao.getUserByUsername(loginDto.getUsername());
+            UsernamePasswordAuthenticationToken authenticationToken =
+                    new UsernamePasswordAuthenticationToken(loginDto.getUsername(), loginDto.getPassword());
+            Authentication authentication = authenticationManagerBuilder.getObject().authenticate(authenticationToken);
+            SecurityContextHolder.getContext().setAuthentication(authentication);
+            String jwt = tokenProvider.createToken(authentication, false);
+
+            User user = userDao.getUserByUsername(loginDto.getUsername());
+            if (user == null) {
+                throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Username or password is incorrect.");
+            }
+
+            HttpHeaders httpHeaders = new HttpHeaders();
+            httpHeaders.add(JWTFilter.AUTHORIZATION_HEADER, "Bearer " + jwt);
+            LoginResponseDto responseDto = new LoginResponseDto(jwt, user); // Reverted to User
+            return new ResponseEntity<>(responseDto, httpHeaders, HttpStatus.OK);
         } catch (UserNotFoundException e) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Username or password is incorrect.");
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Login failed due to server error.", e);
         }
-
-        HttpHeaders httpHeaders = new HttpHeaders();
-        httpHeaders.add(JWTFilter.AUTHORIZATION_HEADER, "Bearer " + jwt);
-        return new ResponseEntity<>(new LoginResponseDto(jwt, user), httpHeaders, HttpStatus.OK);
     }
 
     @PostMapping("/register")
@@ -78,7 +83,7 @@ public class AuthenticationController {
             if (createdUser.getUserType() == User.UserType.Musician) {
                 MusicianProfile createdProfile = musicianProfileDao.createMusicianProfile(createdUser.getUserId());
                 if (newUser.getMusicianName() != null && !newUser.getMusicianName().isEmpty()) {
-                    createdProfile.setName(newUser.getMusicianName()); // Set musician name
+                    createdProfile.setName(newUser.getMusicianName());
                     musicianProfileDao.updateMusicianProfile(createdUser.getUserId(), createdProfile);
                 }
                 return ResponseEntity.status(HttpStatus.CREATED).body(MusicianProfileDto.fromEntity(createdProfile));
@@ -92,7 +97,7 @@ public class AuthenticationController {
                 return ResponseEntity.status(HttpStatus.CREATED).body(UserDto.fromUser(createdUser));
             }
         } catch (DaoException | UserCreationException e) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "User registration failed.");
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "User registration failed.", e);
         }
     }
 }

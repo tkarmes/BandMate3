@@ -27,7 +27,8 @@ public interface UserDao {
 
     String uploadProfilePicture(Long userId, MultipartFile file) throws UserNotFoundException;
 
-    // Methods specific to musicians
+    List<User> getUsersByType(User.UserType userType, int page, int size);
+
     void addInstrumentToMusician(Long userId, String instrumentName);
 
     MusicianProfile getMusicianProfileByUserId(Long userId);

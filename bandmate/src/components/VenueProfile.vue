@@ -326,5 +326,226 @@ export default {
 </script>
 
 <style scoped>
-/* Unchanged from your original */
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
+
+.venue-profile {
+  max-width: 850px; /* Increased from 700px */
+  margin: 0 auto;
+  padding: 25px;
+  color: var(--text, #ffffff);
+  font-family: 'Roboto', sans-serif;
+}
+
+.hero {
+  position: relative;
+  text-align: center;
+  margin-bottom: 25px;
+  padding: 20px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #2a2a2a;
+}
+
+.profile-pic {
+  width: 200px; /* Increased from 150px */
+  height: 200px;
+  border-radius: 50%;
+  border: 4px solid #fff;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  object-fit: cover;
+  background: #ffffff;
+}
+
+.hero h1 {
+  font-size: 2.2rem; /* Reduced from 2.5rem */
+  margin: 10px 0;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.hero-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  background-size: cover;
+  background-position: center;
+  opacity: 0.3;
+  filter: blur(5px);
+}
+
+.hero-background::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.7));
+}
+
+.profile-details {
+  background: #1e1e1e;
+  padding: 20px; /* Reduced from 25px */
+  border-radius: 12px;
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+  transition: transform 0.3s ease;
+}
+
+.profile-details:hover {
+  transform: translateY(-5px);
+}
+
+.info-section p {
+  margin: 10px 0; /* Reduced from 12px */
+  font-size: 1rem; /* Reduced from 1.1rem */
+}
+
+.edit-btn {
+  background: linear-gradient(45deg, var(--primary, #0288d1), var(--accent, #4fc3f7));
+  color: white;
+  padding: 10px 20px; /* Reduced from 12px 24px */
+  border: none;
+  border-radius: 25px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.edit-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.edit-section {
+  padding: 20px; /* Reduced from 25px */
+}
+
+.edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px; /* Reduced from 20px */
+}
+
+.form-row {
+  display: flex;
+  align-items: center;
+  gap: 12px; /* Reduced from 15px */
+}
+
+.form-row label {
+  width: 140px; /* Reduced from 150px */
+  font-weight: bold;
+  text-align: right;
+  color: var(--primary, #0288d1);
+}
+
+.form-row input,
+.form-row textarea {
+  flex: 1;
+  padding: 8px; /* Reduced from 10px */
+  border: 1px solid #555;
+  border-radius: 6px;
+  background-color: #2a2a2a;
+  color: #fff;
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+.form-row input:focus,
+.form-row textarea:focus {
+  border-color: var(--accent, #4fc3f7);
+  box-shadow: 0 0 5px rgba(79, 195, 247, 0.5);
+  outline: none;
+}
+
+.form-row textarea {
+  min-height: 70px; /* Reduced from 80px */
+  resize: vertical;
+}
+
+.preview-row {
+  align-items: flex-start;
+}
+
+.preview-pic {
+  max-width: 100px; /* Reduced from 120px */
+  margin-top: 8px;
+  border-radius: 8px;
+}
+
+.form-buttons {
+  display: flex;
+  gap: 12px; /* Reduced from 15px */
+  justify-content: flex-end;
+}
+
+.form-buttons button {
+  background: linear-gradient(45deg, var(--primary, #0288d1), var(--accent, #4fc3f7));
+  color: white;
+  padding: 10px 20px; /* Reduced from 12px 24px */
+  border: none;
+  border-radius: 25px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.form-buttons button:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.start-conversation {
+  margin-top: 20px; /* Reduced from 25px */
+  padding: 12px; /* Reduced from 15px */
+  border: 1px solid #555;
+  border-radius: 8px;
+  background: #2a2a2a;
+}
+
+.start-conversation h3 {
+  margin-bottom: 10px; /* Reduced from 12px */
+  color: var(--primary, #0288d1);
+}
+
+.start-conversation input {
+  display: block;
+  width: 100%;
+  margin-bottom: 10px; /* Reduced from 12px */
+  padding: 8px;
+  background-color: #333;
+  color: #fff;
+  border: 1px solid #555;
+  border-radius: 6px;
+  transition: border-color 0.3s;
+}
+
+.start-conversation input:focus {
+  border-color: var(--accent, #4fc3f7);
+  outline: none;
+}
+
+.start-conversation button {
+  background: linear-gradient(45deg, var(--primary, #0288d1), var(--accent, #4fc3f7));
+  color: white;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 25px;
+  transition: transform 0.2s;
+}
+
+.start-conversation button:hover {
+  transform: scale(1.05);
+}
+
+.start-conversation button:disabled {
+  background: #555;
+  cursor: not-allowed;
+}
+
+.error {
+  color: var(--secondary, #ff5252);
+  margin-top: 8px;
+}
 </style>

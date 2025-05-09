@@ -119,20 +119,35 @@
   @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
   
   .user-list {
-    max-width: 900px;
-    margin: 0 auto;
-    padding: 20px;
-    background: #1e1e1e;
-    border-radius: 8px;
-    color: #ffffff;
-    font-family: 'Roboto', sans-serif;
-  }
-  
-  h2 {
-    color: #0288d1;
-    margin-bottom: 15px;
-    font-size: 1.8rem;
-  }
+  max-width: 850px; /* Increased from 700px */
+  margin: 0 auto;
+  padding: 20px;
+  color: var(--text);
+  font-family: 'Roboto', sans-serif;
+}
+
+.user-list-container {
+  max-height: 450px; /* Slightly reduced from 500px */
+  overflow-y: auto;
+  padding: 15px;
+  background: var(--card-bg);
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.avatar {
+  width: 35px; /* Increased from 30px */
+  height: 35px;
+  border-radius: 50%;
+  margin-right: 10px;
+  object-fit: cover;
+}
+
+h2 {
+  font-size: 1.6rem; /* Increased from 1.5rem */
+  color: var(--primary);
+  margin-bottom: 15px;
+}
   
   .list-toggle {
     display: flex;
